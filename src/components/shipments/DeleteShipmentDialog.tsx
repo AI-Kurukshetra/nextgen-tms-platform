@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 type DeleteShipmentDialogProps = {
   shipmentId: string;
   shipmentNumber: string;
-  onDeleted: () => void;
+  onDeleted?: () => void;
   redirectTo?: string;
 };
 
@@ -62,7 +62,7 @@ export function DeleteShipmentDialog({
                 }
 
                 toast.success("Shipment deleted");
-                onDeleted();
+                onDeleted?.();
                 if (redirectTo) {
                   router.push(redirectTo);
                 }

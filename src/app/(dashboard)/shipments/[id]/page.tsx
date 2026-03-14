@@ -141,7 +141,6 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
           <DeleteShipmentDialog
             shipmentId={shipment.id}
             shipmentNumber={shipment.shipment_number}
-            onDeleted={() => {}}
             redirectTo="/shipments"
           />
         )}
