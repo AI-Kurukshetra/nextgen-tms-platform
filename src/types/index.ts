@@ -34,3 +34,6 @@ export const TRANSPORT_MODES = ["truck", "rail", "air", "ocean", "intermodal"] a
 export const DRIVER_STATUSES = ["available", "on_trip", "off_duty", "suspended"] as const;
 
 export const WAREHOUSE_STATUSES = ["active", "inactive", "maintenance"] as const;
+
+export const USER_ROLES = ["admin", "dispatcher", "customer"] as const;
+export const PUBLIC_REGISTER_ROLES = ["customer", "dispatcher"] as const;

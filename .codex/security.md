@@ -22,7 +22,7 @@ Do not expose server keys to client bundles or route responses.
 - Use `supabase.auth.getUser()` for trusted checks.
 - Middleware protects operational paths.
 - Auth callback route must remain active: `src/app/auth/callback/route.ts`.
-- Public register flow always writes `role: customer` in signup metadata.
+- Public register flow enforces explicit role selection (`customer` or `dispatcher`) in signup metadata.
 - Duplicate email is blocked in register and admin/dispatcher user provisioning actions.
 
 ### Protected route groups

@@ -21,7 +21,7 @@ This build targets a production-ready core for operations teams and customer vis
 | `dispatcher` | Full operational access except restricted admin-only actions |
 | `customer` | Read-only customer portal and own shipment visibility |
 
-Public signup role is `customer`; admin provisioning can create `admin`, `dispatcher`, or `customer`.
+Public signup includes role selection for `customer` or `dispatcher`; admin provisioning can create `admin`, `dispatcher`, or `customer`.
 
 ---
 

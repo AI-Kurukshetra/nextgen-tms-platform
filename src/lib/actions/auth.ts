@@ -14,10 +14,28 @@ export async function login(formData: unknown) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { email, password, role } = parsed.data;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: error.message };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    await supabase.auth.signOut();
+    return { error: "Unable to verify logged in user" };
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const userRole = profile?.role ?? null;
+
+  if (userRole !== role) {
+    await supabase.auth.signOut();
+    return { error: `This account is registered as ${userRole ?? "unknown"}, not ${role}` };
   }
 
   redirect("/dashboard");
@@ -48,7 +66,7 @@ export async function register(formData: unknown) {
       emailRedirectTo: `${APP_URL}/auth/callback`,
       data: {
         full_name: parsed.data.fullName,
-        role: "customer",
+        role: parsed.data.role,
       },
     },
   });

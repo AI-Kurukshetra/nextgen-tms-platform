@@ -90,6 +90,7 @@
 - [x] Dispatcher account creation restricted to customer role
 - [x] Shipment creation supports assigning a customer (`customer_id`)
 - [x] Middleware role gating redirects customer users away from ops-only pages
+- [x] Register/login now include explicit role selection with server-side role match validation
 
 ---
 

@@ -12,6 +12,7 @@ import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectItem } from "@/components/ui/select";
 
 export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
@@ -26,6 +27,7 @@ export function RegisterForm() {
       email: "",
       password: "",
       confirmPassword: "",
+      role: "customer",
     },
   });
 
@@ -62,6 +64,15 @@ export function RegisterForm() {
         <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input id="confirmPassword" type="password" {...register("confirmPassword")} />
         {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="role">Register As</Label>
+        <Select id="role" {...register("role")}>
+          <SelectItem value="customer">Customer</SelectItem>
+          <SelectItem value="dispatcher">Dispatcher</SelectItem>
+        </Select>
+        {errors.role && <p className="text-sm text-red-600">{errors.role.message}</p>}
       </div>
 
       <Button className="w-full" type="submit" disabled={isPending}>

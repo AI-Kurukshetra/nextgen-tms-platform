@@ -12,6 +12,7 @@ import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectItem } from "@/components/ui/select";
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
@@ -24,6 +25,7 @@ export function LoginForm() {
     defaultValues: {
       email: "",
       password: "",
+      role: "customer",
     },
   });
 
@@ -48,6 +50,16 @@ export function LoginForm() {
         <Label htmlFor="password">Password</Label>
         <Input id="password" type="password" {...register("password")} />
         {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="role">Role</Label>
+        <Select id="role" {...register("role")}>
+          <SelectItem value="customer">Customer</SelectItem>
+          <SelectItem value="dispatcher">Dispatcher</SelectItem>
+          <SelectItem value="admin">Admin</SelectItem>
+        </Select>
+        {errors.role && <p className="text-sm text-red-600">{errors.role.message}</p>}
       </div>
 
       <Button className="w-full" type="submit" disabled={isPending}>
