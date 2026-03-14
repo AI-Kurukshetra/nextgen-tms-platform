@@ -92,7 +92,8 @@ export type CreateShipmentInput = z.infer<typeof createShipmentSchema>
 
 ## SERVER ACTIONS
 
-- All mutations use Server Actions (not API routes, except AI endpoint)
+- All internal UI mutations use Server Actions by default
+- API routes are allowed for integration/computation endpoints and shared service contracts
 - File location: `src/lib/actions/[module].ts`
 - Always return `{ data, error }` shape — never throw
 - Always validate with Zod before touching DB

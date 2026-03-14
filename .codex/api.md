@@ -1,253 +1,121 @@
 # API & Server Actions — NextGen TMS Platform
-> Patterns for all server actions and API routes.
+> Updated API contract for the expanded operational scope.
 
 ---
 
-## ARCHITECTURE DECISION
+## ARCHITECTURE
 
-| Operation | Pattern | Why |
-|---|---|---|
-| Data reads | Server components + direct Supabase calls | Fastest, no API overhead |
-| Mutations (create/update/delete) | Server Actions | No API route needed |
-| AI delay prediction | API Route (`/api/ai/...`) | Needs server-side Anthropic SDK |
-
----
-
-## SERVER ACTION PATTERN
-
-Every server action in `src/lib/actions/` follows this exact shape:
-
-```typescript
-'use server'
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { shipmentSchema } from '@/lib/validations/shipment'
-
-export async function createShipment(input: unknown) {
-  // 1. Auth check
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { data: null, error: 'Unauthorized' }
-
-  // 2. Validate input
-  const parsed = shipmentSchema.safeParse(input)
-  if (!parsed.success) return { data: null, error: parsed.error.flatten() }
-
-  // 3. DB operation
-  const { data, error } = await supabase
-    .from('shipments')
-    .insert({ ...parsed.data, created_by: user.id })
-    .select('id, shipment_number')
-    .single()
-
-  if (error) return { data: null, error: error.message }
-
-  // 4. Revalidate affected pages
-  revalidatePath('/shipments')
-
-  return { data, error: null }
-}
-```
-
----
-
-## QUERY PATTERNS
-
-### List with filter
-```typescript
-export async function getShipments(status?: string, search?: string) {
-  const supabase = await createClient()
-  let query = supabase
-    .from('shipments')
-    .select(`
-      id, shipment_number, origin_city, destination_city,
-      cargo_type, weight_kg, status, freight_cost, scheduled_delivery,
-      carriers ( name, transport_mode ),
-      drivers ( full_name )
-    `)
-    .order('created_at', { ascending: false })
-
-  if (status && status !== 'all') query = query.eq('status', status)
-  if (search) query = query.or(
-    `shipment_number.ilike.%${search}%,origin_city.ilike.%${search}%,destination_city.ilike.%${search}%`
-  )
-
-  const { data, error } = await query
-  return { data, error: error?.message ?? null }
-}
-```
-
-### Single record with relations
-```typescript
-export async function getShipmentById(id: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('shipments')
-    .select(`
-      *,
-      carriers ( * ),
-      drivers ( * ),
-      routes ( * ),
-      origin_warehouse:warehouses!origin_warehouse_id ( * ),
-      dest_warehouse:warehouses!destination_warehouse_id ( * ),
-      tracking_events ( * )
-    `)
-    .eq('id', id)
-    .single()
-  return { data, error: error?.message ?? null }
-}
-```
-
-### Update status
-```typescript
-export async function updateShipmentStatus(id: string, status: ShipmentStatus) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const { error } = await supabase
-    .from('shipments')
-    .update({ status })
-    .eq('id', id)
-
-  if (error) return { error: error.message }
-  revalidatePath(`/shipments/${id}`)
-  revalidatePath('/shipments')
-  return { error: null }
-}
-```
-
-### Delete
-```typescript
-export async function deleteShipment(id: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.from('shipments').delete().eq('id', id)
-  if (error) return { error: error.message }
-  revalidatePath('/shipments')
-  return { error: null }
-}
-```
-
----
-
-## AI API ROUTE PATTERN
-
-```typescript
-// src/app/api/ai/delay-prediction/route.ts
-import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@/lib/supabase/server'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-export async function POST(request: Request) {
-  // Auth check
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // Parse body
-  const { origin, destination, carrierId, scheduledDate, status } = await request.json()
-  if (!origin || !destination) {
-    return Response.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-
-  // Call Anthropic — keep prompt short to save tokens
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 150,
-    messages: [{
-      role: 'user',
-      content: `TMS shipment: ${origin} to ${destination}, status: ${status}, delivery: ${scheduledDate}.
-Assess delay risk. Reply with JSON only: {"risk":"low"|"medium"|"high","reason":"one sentence","confidence":0-100}`
-    }]
-  })
-
-  // Parse response safely
-  try {
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    const result = JSON.parse(text)
-    return Response.json(result)
-  } catch {
-    return Response.json({ risk: 'low', reason: 'Unable to assess', confidence: 0 })
-  }
-}
-```
-
----
-
-## DASHBOARD STATS QUERY
-
-```typescript
-// src/lib/actions/dashboard.ts
-export async function getDashboardStats() {
-  const supabase = await createClient()
-
-  const [total, inTransit, delivered, activeCarriers, availableDrivers, delayed] =
-    await Promise.all([
-      supabase.from('shipments').select('id', { count: 'exact', head: true }),
-      supabase.from('shipments').select('id', { count: 'exact', head: true }).eq('status','in_transit'),
-      supabase.from('shipments').select('id', { count: 'exact', head: true }).eq('status','delivered'),
-      supabase.from('carriers').select('id', { count: 'exact', head: true }).eq('status','active'),
-      supabase.from('drivers').select('id', { count: 'exact', head: true }).eq('status','available'),
-      supabase.from('shipments').select('id', { count: 'exact', head: true }).eq('status','delayed'),
-    ])
-
-  return {
-    total: total.count ?? 0,
-    inTransit: inTransit.count ?? 0,
-    delivered: delivered.count ?? 0,
-    activeCarriers: activeCarriers.count ?? 0,
-    availableDrivers: availableDrivers.count ?? 0,
-    delayed: delayed.count ?? 0,
-  }
-}
-```
-
----
-
-## AUTH ACTIONS
-
-```typescript
-// src/lib/actions/auth.ts
-'use server'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-
-export async function login(email: string, password: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { error: error.message }
-  redirect('/dashboard')
-}
-
-export async function register(fullName: string, email: string, password: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({
-    email, password,
-    options: { data: { full_name: fullName } }
-  })
-  if (error) return { error: error.message }
-  redirect('/dashboard')
-}
-
-export async function logout() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  redirect('/login')
-}
-```
-
----
-
-## REVALIDATION RULES
-
-| Action | Revalidate |
+| Operation Type | Pattern |
 |---|---|
-| Create/update/delete shipment | `/shipments`, `/shipments/[id]`, `/dashboard` |
-| Update carrier | `/carriers` |
-| Update driver | `/drivers` |
+| Data reads for pages | Server components + typed Supabase calls |
+| Mutations | Server Actions under `src/lib/actions` |
+| Stateless computation/integration endpoints | Route Handlers under `src/app/api/**/route.ts` |
 
-Use `revalidatePath()` at end of successful mutations.
+Server actions are primary for internal app mutations.
+Route handlers are used for reusable service-style endpoints and integration payloads.
 
 ---
-*API v1.0 — NextGen TMS Platform*
+
+## SERVER ACTION BASE RULES
+
+Every action must:
+1. Authenticate with `createClient()` + `auth.getUser()`.
+2. Authorize by role when needed.
+3. Validate input using Zod.
+4. Return `{ data, error }` and avoid throwing.
+5. `revalidatePath()` after successful mutations.
+
+Primary action modules:
+- `auth.ts`
+- `shipments.ts`
+- `carriers.ts`
+- `drivers.ts`
+- `routes.ts`
+- `warehouses.ts`
+- `dashboard.ts`
+- `tracking.ts`
+- `inventory.ts`
+- `customers.ts`
+- `invoicing.ts`
+
+---
+
+## ROUTE HANDLERS (CURRENT)
+
+| Route | Method | Purpose | Access |
+|---|---|---|---|
+| `/api/delay-risk` | `POST` | Deterministic delay risk scoring | Authenticated |
+| `/api/quote` | `POST` | Freight quote from rate engine | Authenticated |
+| `/api/tracking` | `GET` | Shipment tracking feed | Authenticated |
+| `/api/tracking/live` | `GET/POST` | Live GPS path read + location ping ingest | `GET`: Authenticated, `POST`: Admin/Dispatcher |
+| `/api/documents` | `GET/POST/DELETE` | Shipment document metadata and shipment-link management | Authenticated (write role-gated) |
+| `/api/notifications/send` | `POST` | Shipment communication logging | Admin/Dispatcher |
+| `/api/compliance/check` | `POST` | Shipment compliance evaluation | Admin/Dispatcher |
+| `/api/load-planning` | `POST` | Load-fit planning calculation | Admin/Dispatcher |
+| `/api/routes/optimize` | `POST` | Route recommendation by preference (fastest/cheapest/balanced) | Authenticated |
+| `/api/invoicing/audit` | `POST` | Freight audit check | Admin/Dispatcher |
+| `/api/inventory/visibility` | `GET` | Warehouse flow metrics | Admin/Dispatcher |
+| `/api/reports/kpis` | `GET` | KPI counters for reporting | Admin/Dispatcher |
+| `/api/integrations/edi` | `GET` | EDI 214 payload generation | Admin/Dispatcher |
+| `/api/integrations/load-board` | `POST` | Load board payload generation/post-log | Admin/Dispatcher |
+| `/api/drivers/mobile` | `GET` | Mobile driver assignment feed | Admin/Dispatcher |
+
+---
+
+## AUTHZ HELPER
+
+`src/lib/api-auth.ts`
+- `requireApiAuth()`
+- `requireApiRole(allowedRoles)`
+
+All route handlers use these helpers for consistent `401/403` behavior.
+
+---
+
+## STATUS TRANSITION RULES
+
+Shipment status transitions are enforced server-side:
+- `draft -> confirmed|cancelled`
+- `confirmed -> assigned|cancelled`
+- `assigned -> in_transit`
+- `in_transit -> delayed|delivered`
+- `delayed -> in_transit`
+- terminal: `delivered`, `cancelled`
+
+---
+
+## RESPONSE CONTRACT PATTERNS
+
+### Server Action
+```ts
+{ data: T | null, error: string | null }
+```
+
+### API Success
+```ts
+Response.json({ data: ... })
+```
+
+### API Error
+```ts
+Response.json({ error: "message" }, { status: 4xx | 5xx })
+```
+
+---
+
+## REVALIDATION TARGETS
+
+| Mutation | Revalidated Paths |
+|---|---|
+| Shipment create/update/delete | `/shipments`, `/shipments/[id]`, `/dashboard` |
+| Driver status updates | `/drivers`, `/drivers/mobile` |
+| Customer updates | `/customers` |
+| Document/notification updates | `/shipments/[id]` |
+
+---
+
+## IMPLEMENTATION NOTES
+
+- Avoid duplicate APIs when server actions already solve the flow.
+- Keep payload schemas strict (`zod`) for every POST endpoint.
+- Keep route handlers side-effect aware (write operations are role-gated and logged where needed).

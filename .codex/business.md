@@ -1,175 +1,165 @@
 # Business Requirements — NextGen TMS Platform
-> Exact acceptance criteria. Codex must read this before building any feature.
-> Every item below is a testable requirement — not a vague goal.
+> Updated scope baseline aligned to the March 14, 2026 guide.
+> Rule zero: check existing code/tables/APIs first; extend/reuse before creating new assets.
 
 ---
 
-## USERS & ROLES
+## SYSTEM GOAL
 
-| Role | Login | What they see |
-|---|---|---|
-| admin | yes | Everything |
-| dispatcher | yes | All shipments, carriers, drivers, routes, warehouses, dashboard |
-| customer | yes | Own shipments only (read-only) |
+The platform manages the full logistics lifecycle:
+`Order -> Shipment -> Route Planning -> Carrier Assignment -> Tracking -> Delivery -> Billing`
 
-New registrations default to `dispatcher` role. Admin must be set manually in DB.
+This build targets a production-ready core for operations teams and customer visibility.
 
 ---
 
-## PAGES & ACCEPTANCE CRITERIA
+## ROLES
 
-### / — Landing Page
-- [ ] Hero section with "NextGen TMS" headline and one-line value proposition
-- [ ] Two CTA buttons: "Get Started" → /register, "Login" → /login
-- [ ] Features grid: Shipment Tracking, Carrier Management, Driver Management, Route Optimization, Warehouse Management, AI Delay Prediction
-- [ ] Works without being logged in
-- [ ] Looks professional — clean, modern, no broken layouts
-
-### /login
-- [ ] Email + password fields
-- [ ] Client-side Zod validation: email format, password min 6 chars
-- [ ] Server-side validation via server action
-- [ ] Wrong credentials → error toast (not full page error)
-- [ ] Success → redirect to /dashboard
-- [ ] Link to /register
-- [ ] Already logged in → redirects to /dashboard (middleware)
-
-### /register
-- [ ] Full name, email, password, confirm password fields
-- [ ] Client-side Zod: all required, email format, passwords match, min 6 chars
-- [ ] Server-side validation via server action
-- [ ] Duplicate email → error toast
-- [ ] Success → redirect to /dashboard
-- [ ] Link to /login
-
-### /dashboard
-- [ ] Protected — unauthenticated → /login
-- [ ] 5 stats cards: Total Shipments, In Transit, Delivered, Active Carriers, Available Drivers
-- [ ] Each card shows real number from DB
-- [ ] Delayed shipments alert badge if count > 0
-- [ ] Recent shipments list (last 5, with status badge)
-- [ ] Loads within 2 seconds with seed data
-
-### /shipments
-- [ ] Protected route
-- [ ] Table showing all shipments (admin/dispatcher) or own (customer)
-- [ ] Columns: Shipment #, Origin → Destination, Cargo Type, Weight, Status badge, Carrier, Scheduled Delivery
-- [ ] Search: filter by shipment number, origin city, destination city (debounced)
-- [ ] Status filter dropdown: All / draft / confirmed / assigned / in_transit / delivered / delayed / cancelled
-- [ ] Empty state component when no results
-- [ ] "New Shipment" button → /shipments/new
-- [ ] Click row → /shipments/[id]
-- [ ] Seed data visible immediately on load
-
-### /shipments/new
-- [ ] Protected — customer role cannot access (redirect /shipments)
-- [ ] Form fields: Origin City*, Origin State*, Destination City*, Destination State*, Cargo Type* (dropdown), Weight KG*, Volume CBM, Carrier (dropdown from DB), Driver (dropdown filtered by carrier), Route (dropdown from DB), Origin Warehouse (dropdown), Destination Warehouse (dropdown), Scheduled Pickup, Scheduled Delivery, Freight Cost, Notes
-- [ ] All * fields required — Zod client + server validation
-- [ ] Weight must be > 0
-- [ ] Submit → creates shipment with status 'draft' → redirect to /shipments/[id]
-- [ ] Cancel → back to /shipments
-
-### /shipments/[id]
-- [ ] Shows all shipment fields
-- [ ] Status badge with correct color (see colors below)
-- [ ] AI Delay Prediction badge if status is 'in_transit' or 'assigned'
-- [ ] Hover on AI badge shows reason tooltip
-- [ ] Carrier details section (name, mode, contact)
-- [ ] Driver details section (name, phone, vehicle number) if assigned
-- [ ] Route details section (name, distance, estimated hours) if assigned
-- [ ] Warehouse details (origin + destination) if assigned
-- [ ] Tracking events timeline (from tracking_events table, newest first)
-- [ ] Status change button (admin/dispatcher only) — dropdown of valid next statuses per state machine
-- [ ] Edit button → /shipments/[id]/edit (admin/dispatcher only)
-- [ ] Delete button with confirmation dialog (admin only)
-
-### /carriers
-- [ ] Protected route
-- [ ] Table: Code, Name, Transport Mode badge, Contact Name, Rating (stars), Status badge
-- [ ] Status filter: All / active / inactive / suspended
-- [ ] Transport mode filter
-- [ ] Seed data visible immediately
-
-### /drivers
-- [ ] Protected route
-- [ ] Table: Name, License Number, License Expiry, Phone, Carrier Name, Vehicle Number, Vehicle Type, Status badge
-- [ ] Status badge: available=green, on_trip=blue, off_duty=gray, suspended=red
-- [ ] Filter by status
-- [ ] Seed data visible immediately
-
-### /routes
-- [ ] Protected route
-- [ ] Table: Name, Origin → Destination, Distance (km), Est. Hours, Mode badge, Toll Charges, Active status
-- [ ] Filter by transport mode
-- [ ] Filter by active/inactive
-- [ ] Seed data visible immediately
-
-### /warehouses
-- [ ] Protected route
-- [ ] Table: Code, Name, City, State, Capacity (sqft), Status badge, Manager Name
-- [ ] Status badge: active=green, inactive=gray, maintenance=amber
-- [ ] Filter by status
-- [ ] Seed data visible immediately
-
----
-
-## STATUS BADGE COLORS
-
-| Status | Color |
+| Role | Capabilities |
 |---|---|
-| draft | gray |
-| confirmed | blue |
-| assigned | purple |
-| in_transit | amber |
-| delivered | green |
-| delayed | red |
-| cancelled | gray (strikethrough text) |
+| `admin` | Full access to all operational modules and destructive actions |
+| `dispatcher` | Full operational access except restricted admin-only actions |
+| `customer` | Read-only customer portal and own shipment visibility |
+
+Default signup role is `dispatcher` unless overridden by admin provisioning rules.
 
 ---
 
-## AI DELAY PREDICTION BADGE
+## MODULE STATUS MATRIX
 
-- Appears on shipment cards/detail only for status: `in_transit`, `assigned`
-- Makes POST to /api/ai/delay-prediction
-- Shows loading spinner while fetching
-- low risk → green badge "Low Risk"
-- medium risk → yellow badge "Medium Risk"
-- high risk → red badge "High Risk"
-- Hover/tooltip shows: reason text + confidence percentage
-- If API fails → show nothing (do not show error to user)
-- Response cached per shipment ID for the session (avoid repeated API calls)
-
----
-
-## NAVIGATION SIDEBAR
-
-Links in order:
-1. Dashboard (/dashboard)
-2. Shipments (/shipments)
-3. Carriers (/carriers)
-4. Drivers (/drivers)
-5. Routes (/routes)
-6. Warehouses (/warehouses)
-
-Active link highlighted. User avatar + name at bottom with logout dropdown.
-Collapses to hamburger on mobile (< 768px).
+| Module | Scope | Status |
+|---|---|---|
+| Authentication & User Management | login, register, session, role-gated UI, middleware protection | Implemented |
+| Customer Management | customer self-service portal, customer list view for ops role | Implemented |
+| Shipment Management | create/list/detail/delete, status workflow, risk, tracking timeline | Implemented |
+| Carrier & Fleet Management | carriers + drivers + assignment visibility | Implemented |
+| Route Management | route catalog, mode and active filtering + optimization assistant | Implemented |
+| Tracking System | shipment tracking feed + tracking update APIs + live GPS coordinates | Implemented |
+| Document Management | normalized document tables, shipment links, upload/list/delete flow | Implemented |
+| Billing & Freight Management | quote engine, rate page, freight audit + invoice/payment workflow | Implemented |
+| Warehouse & Inventory | warehouse directory + inventory visibility metrics | Implemented |
+| Integrations | EDI payload generation, load board posting, KPI API | Implemented |
+| Driver Mobility | driver mobile assignment feed/page | Implemented |
 
 ---
 
-## WHAT IS OUT OF SCOPE (do not build)
+## ACCEPTANCE CRITERIA BY PAGE
 
-- Billing / invoicing module
-- Document upload / proof of delivery photos
-- Email notifications
-- Real-time GPS map
-- User management page (set roles via DB directly)
-- Password reset flow
-- Shipment editing after creation (status change only)
+### Public
+
+#### `/`
+- [x] Brand headline and value proposition
+- [x] CTA to `/register` and `/login`
+- [x] Feature grid for core modules
+
+### Auth
+
+#### `/login`
+- [x] Email/password validation (client + server)
+- [x] Error toast on invalid credentials
+- [x] Redirect to `/dashboard` on success
+
+#### `/register`
+- [x] Full name/email/password/confirm password validation
+- [x] Role/profile metadata captured on signup
+- [x] Redirect to `/dashboard` on success
+
+### Core Ops
+
+#### `/dashboard`
+- [x] Real counts: shipments/carriers/drivers status KPIs
+- [x] Delayed shipments alert
+- [x] Recent shipments section
+
+#### `/shipments`
+- [x] Search + status filtering
+- [x] Table with shipment essentials
+- [x] Create CTA for operational roles
+
+#### `/shipments/new`
+- [x] Typed form with all required shipping/assignment/schedule/cost fields
+- [x] Dropdown data sourced from active carriers/drivers/routes/warehouses
+- [x] Successful create redirects to shipment detail
+
+#### `/shipments/[id]`
+- [x] Shipment, route, carrier, driver, warehouse, schedule detail cards
+- [x] Tracking timeline
+- [x] Delay risk badge
+- [x] Status update flow by role
+- [x] Delete flow by role
+- [x] Document/notification/load-planning/compliance/freight-audit/integration panels
+
+#### `/carriers`
+- [x] Mode + status filters
+- [x] Rating stars and status badges
+
+#### `/drivers`
+- [x] Driver operational grid with license expiry/status indicators
+- [x] Link to mobile assignments view
+
+#### `/drivers/mobile`
+- [x] Driver assignment feed for mobile workflow
+
+#### `/routes`
+- [x] Mode + active filters
+- [x] Distance/time/cost visibility
+
+#### `/warehouses`
+- [x] Warehouse status and capacity visibility
+
+#### `/inventory`
+- [x] Warehouse-level inbound/outbound/in-transit inventory flow metrics
+
+#### `/rates`
+- [x] Freight quote calculator and pricing transparency
+
+#### `/invoicing`
+- [x] Freight audit checks for billing mismatch/risk cues
+
+### Customer Experience
+
+#### `/customer`
+- [x] Customer self-service shipment visibility
+
+#### `/customers`
+- [x] Ops-facing customer directory with shipment activity metrics
 
 ---
 
-## SEED DATA VISIBILITY REQUIREMENT
+## API SURFACE (BUSINESS VIEW)
 
-Judges open the app and must see data immediately without any setup.
-All list pages must show populated data on first load using seed data from database.md.
-Do not hide data behind any "getting started" flow.
+- Tracking: `/api/tracking`
+- Live Tracking: `/api/tracking/live`
+- Delay Risk: `/api/delay-risk`
+- Quote: `/api/quote`
+- Documents: `/api/documents`
+- Notifications: `/api/notifications/send`
+- Compliance: `/api/compliance/check`
+- Load Planning: `/api/load-planning`
+- Route Optimization: `/api/routes/optimize`
+- Invoicing Audit: `/api/invoicing/audit`
+- Inventory Visibility: `/api/inventory/visibility`
+- Reports KPIs: `/api/reports/kpis`
+- Integrations: `/api/integrations/edi`, `/api/integrations/load-board`
+- Driver Mobile Feed: `/api/drivers/mobile`
+
+---
+
+## NON-FUNCTIONAL EXPECTATIONS
+
+- Type-safe implementation end to end (Zod + TS + typed Supabase)
+- Role-aware authorization on server paths and mutations
+- No secret leakage (`.env.local` never committed)
+- No duplicated modules/tables/APIs
+- Mobile-safe responsive layout for operations pages
+
+---
+
+## FUTURE ENHANCEMENTS (NOT REQUIRED FOR CURRENT STABLE CORE)
+
+- AI route optimization
+- Dynamic freight pricing from external live market feeds
+- Carbon emission tracking
+- IoT cargo telemetry ingestion
+
+Current build ships deterministic risk, compliance, and audit logic suitable for MVP stability.

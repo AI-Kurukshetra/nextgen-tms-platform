@@ -405,3 +405,175 @@ select status, count(*) from shipments group by status order by status;
 
 ---
 *7 tables | 3NF | ACID | RLS enforced | NextGen TMS Platform*
+## STAGE 2 — EXTENDED MODULE TABLES (GUIDE PARITY)
+
+Use these only after confirming table absence (`to_regclass`) and no overlap with existing logic.
+
+### Step A — Customer Management
+```sql
+create table if not exists customers (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid unique references profiles(id) on delete cascade,
+  company_name text,
+  gst_number text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists customer_addresses (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references customers(id) on delete cascade,
+  label text not null,
+  address_line1 text not null,
+  address_line2 text,
+  city text not null,
+  state text not null,
+  postal_code text,
+  country text not null default 'India',
+  is_primary boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+### Step B — Fleet & Tracking Depth
+```sql
+create table if not exists vehicles (
+  id uuid primary key default gen_random_uuid(),
+  carrier_id uuid references carriers(id) on delete set null,
+  vehicle_number text not null unique,
+  vehicle_type text not null,
+  capacity_kg numeric(10,2),
+  capacity_cbm numeric(10,2),
+  status text not null default 'active' check (status in ('active','maintenance','inactive')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists gps_locations (
+  id uuid primary key default gen_random_uuid(),
+  shipment_id uuid not null references shipments(id) on delete cascade,
+  latitude numeric(10,7) not null,
+  longitude numeric(10,7) not null,
+  speed_kmph numeric(8,2),
+  recorded_at timestamptz not null default now()
+);
+```
+
+### Step C — Document Management
+```sql
+create table if not exists document_types (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null
+);
+
+create table if not exists documents (
+  id uuid primary key default gen_random_uuid(),
+  file_name text not null,
+  file_url text not null,
+  mime_type text,
+  uploaded_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists shipment_documents (
+  id uuid primary key default gen_random_uuid(),
+  shipment_id uuid not null references shipments(id) on delete cascade,
+  document_id uuid not null references documents(id) on delete cascade,
+  document_type_id uuid references document_types(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (shipment_id, document_id)
+);
+```
+
+### Step D — Billing Depth
+```sql
+create table if not exists rate_cards (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  transport_mode text not null,
+  effective_from date not null,
+  effective_to date,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists rates (
+  id uuid primary key default gen_random_uuid(),
+  rate_card_id uuid references rate_cards(id) on delete cascade,
+  cargo_type text not null,
+  min_distance_km numeric(10,2) not null,
+  max_distance_km numeric(10,2),
+  base_rate_inr numeric(12,2) not null,
+  per_km_inr numeric(12,2) not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists invoices (
+  id uuid primary key default gen_random_uuid(),
+  shipment_id uuid not null references shipments(id) on delete cascade,
+  invoice_number text not null unique,
+  subtotal_inr numeric(12,2) not null,
+  tax_inr numeric(12,2) not null default 0,
+  total_inr numeric(12,2) not null,
+  status text not null default 'draft' check (status in ('draft','issued','paid','overdue','cancelled')),
+  issued_at timestamptz,
+  due_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists payments (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references invoices(id) on delete cascade,
+  amount_inr numeric(12,2) not null,
+  method text,
+  reference_no text,
+  paid_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+```
+
+### Step E — RLS + Indexes For Stage 2
+
+```sql
+alter table customers enable row level security;
+alter table customer_addresses enable row level security;
+alter table vehicles enable row level security;
+alter table gps_locations enable row level security;
+alter table document_types enable row level security;
+alter table documents enable row level security;
+alter table shipment_documents enable row level security;
+alter table rate_cards enable row level security;
+alter table rates enable row level security;
+alter table invoices enable row level security;
+alter table payments enable row level security;
+
+create index if not exists idx_customers_profile on customers(profile_id);
+create index if not exists idx_customer_addresses_customer on customer_addresses(customer_id);
+create index if not exists idx_vehicles_carrier on vehicles(carrier_id);
+create index if not exists idx_gps_locations_shipment on gps_locations(shipment_id, recorded_at desc);
+create index if not exists idx_shipment_documents_shipment on shipment_documents(shipment_id);
+create index if not exists idx_invoices_shipment on invoices(shipment_id);
+create index if not exists idx_payments_invoice on payments(invoice_id);
+```
+
+This stage is additive and should not break existing 7-table MVP flows.
+
+## LIVE DB STATUS (2026-03-14)
+
+Current verified row counts in `nextgen-tms`:
+- `carriers`: 10
+- `warehouses`: 6
+- `drivers`: 8
+- `routes`: 8
+- `shipments`: 12
+- `tracking_events`: 9
+- `gps_locations`: 6
+- `document_types`: 5
+- `documents`: 2
+- `shipment_documents`: 2
+- `invoices`: 3
+- `payments`: 1
+
+`gps_locations`, document management tables, and invoicing tables are active with RLS enabled and seeded sample data.

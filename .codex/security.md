@@ -1,172 +1,114 @@
 # Security Rules — NextGen TMS Platform
-> Directly maps to "Code Security" judging criterion.
-> Codex must read this before writing auth, API routes, or server actions.
+> Security baseline for auth, RLS, API handlers, and secrets.
 
 ---
 
-## SECRET MANAGEMENT
+## 1) SECRET MANAGEMENT
 
-### Rule 1 — Never commit secrets
-```
-.env.local          → in .gitignore → NEVER in GitHub
-.env*.local         → in .gitignore → NEVER in GitHub
-```
-
-### Rule 2 — Server-only secrets
-These variables must NEVER have `NEXT_PUBLIC_` prefix:
-- `SUPABASE_SERVICE_ROLE_KEY` — has admin DB access, bypasses RLS
-- `ANTHROPIC_API_KEY` — paid API, exposes your account if leaked
-
-Verify by checking browser DevTools → Network → any request → look at response headers.
-If either key appears in the browser, you have a security bug.
-
-### Rule 3 — .env.example committed with empty values
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-ANTHROPIC_API_KEY=
-```
-This file IS committed. It shows what variables are needed without exposing values.
-
-### Rule 4 — GitHub MCP pre-commit check
-Before every push via GitHub MCP, verify diff does not include:
+### Never commit
 - `.env.local`
-- Any file containing a real Supabase URL + key together
-- Any file containing `ANTHROPIC_API_KEY` with a real value
+- `.env*.local`
+
+### Public vs server-only
+- Public-safe: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`
+- Server-only: `SUPABASE_SERVICE_ROLE_KEY`
+
+Do not expose server keys to client bundles or route responses.
 
 ---
 
-## AUTHENTICATION
+## 2) AUTHENTICATION
 
-### Supabase Auth patterns
-```typescript
-// Get user in server component — use getUser() NOT getSession()
-// getSession() can be spoofed by client. getUser() validates server-side.
-const { data: { user }, error } = await supabase.auth.getUser()
-if (!user) redirect('/login')
-```
+- Use `supabase.auth.getUser()` for trusted checks.
+- Middleware protects operational paths.
+- Auth callback route must remain active: `src/app/auth/callback/route.ts`.
 
-### Protected routes — middleware.ts handles this
-All routes under `/dashboard`, `/shipments`, `/carriers`, `/drivers`, `/routes`, `/warehouses`
-are protected. Unauthenticated requests redirect to `/login`.
-Never rely on client-side auth checks alone.
-
-### Auth callback route
-```
-src/app/auth/callback/route.ts
-```
-Required for Supabase email confirmation and OAuth flows.
-Must be in Supabase redirect allowlist.
+### Protected route groups
+- `/dashboard`
+- `/customers`
+- `/customer`
+- `/shipments`
+- `/carriers`
+- `/drivers`
+- `/routes`
+- `/warehouses`
+- `/inventory`
+- `/rates`
+- `/invoicing`
 
 ---
 
-## ROW LEVEL SECURITY
+## 3) AUTHORIZATION (ROLE ENFORCEMENT)
 
-RLS is the MOST important security feature. Judges specifically check for this.
+Role sources come from `profiles.role`.
 
-### Verify RLS is on
-```sql
-select tablename, rowsecurity from pg_tables where schemaname = 'public';
--- ALL tables must show rowsecurity = true
-```
+- `admin`: all operations
+- `dispatcher`: operational mutations, reads
+- `customer`: read-only own data scope
 
-### What happens without RLS
-Any authenticated user can read/write ALL data in ALL tables.
-Customers can see other customers' shipments. Dispatchers can delete anything.
-This is a critical security failure.
-
-### The get_my_role() helper
-```sql
-create or replace function get_my_role()
-returns text language sql security definer stable as $$
-  select role from public.profiles where id = auth.uid()
-$$;
-```
-Used in every RLS policy. Do not query profiles table directly in policies.
-
-### Never disable RLS
-Even for development or testing. Use the service role key in a separate script
-if you need to bypass RLS for admin operations.
+Server enforcement points:
+- server actions (`src/lib/actions/*`)
+- API route handlers via `src/lib/api-auth.ts`
 
 ---
 
-## INPUT VALIDATION
+## 4) ROW LEVEL SECURITY
 
-### Both layers required
-- Layer 1 (client): Zod schema with `zodResolver` in React Hook Form
-- Layer 2 (server): Same Zod schema parsed again in server action
+RLS must stay enabled for all core tables.
+Minimum operational policy requirement:
+- customers can only read their own shipments/tracking
+- dispatcher/admin can operate across logistics entities
+- destructive actions are admin-gated where applicable
 
-```typescript
-// Server action — always re-validate
-export async function createShipment(input: unknown) {
-  const parsed = shipmentSchema.safeParse(input)
-  if (!parsed.success) return { data: null, error: parsed.error.flatten() }
-  // safe to use parsed.data now
-}
-```
-
-### What to validate
-- All string inputs: min/max length
-- Numbers: positive check, range check
-- Enums: only allowed values (status, cargo_type, role)
-- Dates: valid date format
-- Never trust `input as ShipmentType` — always parse with Zod
+Never disable RLS in app runtime workflows.
 
 ---
 
-## API ROUTES SECURITY
+## 5) INPUT VALIDATION
 
-The only API route is `/api/ai/delay-prediction`.
+Every user payload must be validated twice:
+1. Client-side schema for UX feedback.
+2. Server-side schema before any DB mutation.
 
-```typescript
-// src/app/api/ai/delay-prediction/route.ts
-import { createClient } from '@/lib/supabase/server'
-
-export async function POST(request: Request) {
-  // 1. Verify auth
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // 2. Parse + validate body
-  const body = await request.json()
-  // validate required fields
-
-  // 3. Call Anthropic — ANTHROPIC_API_KEY is process.env only, never returned to client
-  // 4. Return only the safe response shape
-  return Response.json({ risk, reason, confidence })
-}
-```
-
-### What the API route must never return
-- The raw Anthropic API response
-- Internal error stack traces
-- The API key or any env variable value
+Validation coverage includes:
+- auth forms
+- shipment create/update
+- carrier forms
+- customer update
+- all API POST payloads
 
 ---
 
-## SUPABASE SERVICE ROLE KEY
+## 6) API SECURITY RULES
 
-Only use `SUPABASE_SERVICE_ROLE_KEY` when you need to bypass RLS (admin scripts, seed data).
-In the app itself, always use the anon key via the server client.
-The server client + RLS is the correct pattern — not service role in app code.
+### Required pattern for every route handler
+1. Auth check (`requireApiAuth` or `requireApiRole`).
+2. Zod parse request payload/query.
+3. Execute operation.
+4. Return sanitized JSON.
+
+High-risk mutation endpoints (for example `POST /api/tracking/live`) must be role-gated to `admin/dispatcher`.
+
+### Never return
+- secrets
+- stack traces
+- unfiltered provider payloads containing sensitive metadata
+
+---
+
+## 7) CLIENT SAFETY
+
+- No server keys in client components.
+- Do not call privileged Supabase admin APIs from browser code.
+- All sensitive operations happen server-side.
 
 ---
 
-## CHECKLIST BEFORE SUBMITTING
+## 8) RELEASE CHECKLIST
 
-```
-[ ] .env.local not in GitHub (check: git ls-files | grep env)
-[ ] SUPABASE_SERVICE_ROLE_KEY has no NEXT_PUBLIC_ prefix
-[ ] ANTHROPIC_API_KEY has no NEXT_PUBLIC_ prefix
-[ ] RLS enabled on all 7 tables (run verification SQL)
-[ ] /dashboard without auth → /login (not 500 error)
-[ ] /api/ai/delay-prediction without auth → 401
-[ ] No real keys visible in browser DevTools Network tab
-[ ] Zod validation on both client and server for all forms
-```
-
----
-*Security v1.0 — NextGen TMS Platform*
+- [ ] `git ls-files | rg "^\.env"` shows only `.env.example`
+- [ ] middleware redirect rules behave correctly for unauthenticated users
+- [ ] protected APIs return `401` or `403` as expected
+- [ ] no secrets appear in browser Network tab payloads
+- [ ] no mutation route is missing role validation
+- [ ] RLS verified active in Supabase
