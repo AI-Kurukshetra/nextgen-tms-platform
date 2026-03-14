@@ -46,7 +46,7 @@ export function Header({ userEmail, userName, mobileNav }: HeaderProps) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
       <div className="flex items-center gap-3">
         {mobileNav}
         <h1 className="text-xl font-semibold text-gray-900">{getTitle(pathname)}</h1>

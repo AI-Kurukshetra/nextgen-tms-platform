@@ -5,10 +5,10 @@
 
 ## DESIGN PHILOSOPHY
 
-- Mobile-first — design for 375px, enhance for desktop
-- Clean and functional — judges are technical, not designers
-- Data visible immediately — no empty states on first load (seed data handles this)
-- Consistent — same patterns everywhere, no surprises
+- Mobile-first with premium visual direction
+- Data-first but not plain: strong hierarchy, intentional color, and modern spacing
+- Fast readability for ops teams with interactive cues
+- Consistent components with purposeful motion and transitions
 
 ---
 
@@ -47,15 +47,14 @@ intermodal: 'bg-purple-100 text-purple-700'
 
 ### Sidebar
 - Width: `w-64` on desktop, hidden on mobile
-- Background: `bg-gray-900` (dark sidebar like Linear/Vercel)
-- Nav links: `text-gray-300 hover:text-white hover:bg-gray-800`
-- Active link: `text-white bg-gray-800`
-- Logo at top: "NextGen TMS" in white
-- User info at bottom with avatar + name + logout
+- Background: gradient dark panel
+- Active nav item highlighted with accent tint
+- User identity visible at bottom with quick logout
 
 ### Main Content Area
 - Left padding for sidebar: `ml-64` on desktop, `ml-0` on mobile
-- Content padding: `p-6`
+- Soft gradient workspace background
+- Content padding: `p-4` mobile, `p-6` desktop
 - Max width for readability: `max-w-7xl mx-auto`
 
 ### Header
@@ -92,9 +91,13 @@ intermodal: 'bg-purple-100 text-purple-700'
 │         Subtitle         │
 └─────────────────────────┘
 ```
-- Background: `bg-white border border-gray-200 rounded-lg p-6`
-- Number: `text-3xl font-bold text-gray-900`
-- Title: `text-sm font-medium text-gray-500`
+- Hover lift and shadow transitions
+- Icon badge with subtle scale animation
+
+### Charts
+- Dashboard must include visual KPIs (status distribution + monthly trend)
+- Prefer lightweight Tailwind-based bars and progress visuals
+- Keep charts responsive and legible at mobile width
 
 ### Status Badge
 - `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium`
@@ -172,15 +175,20 @@ Every list page needs an empty state component:
 
 ---
 
+## MOTION RULES
+
+- Use subtle animations only where they improve clarity:
+  - section reveal
+  - card hover lift
+  - progress/bar transitions
+- Avoid continuous distracting animation loops
+
 ## WHAT NOT TO DO
 
-- No dark mode (out of scope — consistent light mode only)
-- No animations or transitions (wastes time, not judged)
-- No custom fonts — use default Tailwind/system fonts
-- No images — use lucide-react icons only
-- No gradients or shadows except subtle card shadows
-- No modal-heavy flows — prefer page navigation
-- No skeleton loaders that are more complex than simple gray rectangles
+- No heavy motion that blocks data readability
+- No unstructured color usage without semantic meaning
+- No image-heavy hero sections that reduce app performance
+- No modal-heavy flows for core operational tasks
 
 ---
 *UI/UX v1.0 — NextGen TMS Platform*

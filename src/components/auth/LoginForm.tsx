@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { login } from "@/lib/actions/auth";
+import { DEMO_ACCOUNTS } from "@/lib/demo-accounts";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -39,7 +41,33 @@ export function LoginForm() {
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-900">
+          <Sparkles className="h-4 w-4" />
+          Visitor Demo Accounts
+        </div>
+        <div className="grid gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.email}
+              type="button"
+              className="rounded-md border border-blue-200 bg-white px-3 py-2 text-left text-xs text-blue-900 transition hover:border-blue-300 hover:bg-blue-50"
+              onClick={() => {
+                setValue("email", account.email, { shouldValidate: true });
+                setValue("password", account.password, { shouldValidate: true });
+                setValue("role", account.role, { shouldValidate: true });
+                toast.success(`${account.label} loaded`);
+              }}
+            >
+              <p className="font-semibold">{account.label}</p>
+              <p>{account.email}</p>
+              <p>Role: {account.role}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" {...register("email")} />
@@ -63,7 +91,7 @@ export function LoginForm() {
       </div>
 
       <Button className="w-full" type="submit" disabled={isPending}>
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Login"}
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Login to Dashboard"}
       </Button>
 
       <p className="text-center text-sm text-gray-600">

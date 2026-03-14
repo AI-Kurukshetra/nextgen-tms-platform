@@ -26,7 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const role = profile?.role ?? null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/40 to-emerald-50/30">
       <div className="hidden md:block">
         <Sidebar userName={userName} userEmail={userEmail} role={role} />
       </div>

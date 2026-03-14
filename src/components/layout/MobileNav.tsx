@@ -44,7 +44,7 @@ export function MobileNav({ role }: { role: string | null }) {
           </Button>
         </SheetTrigger>
 
-        <SheetContent className="bg-gray-900 p-4">
+        <SheetContent className="border-l border-white/10 bg-gradient-to-b from-slate-950 to-slate-900 p-4">
           <SheetHeader>
             <SheetTitle className="text-white">NextGen TMS</SheetTitle>
           </SheetHeader>
@@ -61,8 +61,8 @@ export function MobileNav({ role }: { role: string | null }) {
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
                       isActive
-                        ? "bg-gray-800 text-white"
-                        : "text-gray-400 hover:bg-gray-800 hover:text-white",
+                        ? "bg-cyan-500/20 text-cyan-100"
+                        : "text-gray-400 hover:bg-white/10 hover:text-white",
                     )}
                   >
                     <Icon className="h-4 w-4" />

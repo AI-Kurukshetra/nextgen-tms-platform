@@ -24,6 +24,7 @@ Do not expose server keys to client bundles or route responses.
 - Auth callback route must remain active: `src/app/auth/callback/route.ts`.
 - Public register flow enforces explicit role selection (`customer` or `dispatcher`) in signup metadata.
 - Duplicate email is blocked in register and admin/dispatcher user provisioning actions.
+- Visitor demo users exist for showcase access and must be rotated if reused outside demo environments.
 
 ### Protected route groups
 - `/dashboard`

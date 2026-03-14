@@ -58,6 +58,7 @@ Public signup includes role selection for `customer` or `dispatcher`; admin prov
 - [x] Email/password validation (client + server)
 - [x] Error toast on invalid credentials
 - [x] Redirect to `/dashboard` on success
+- [x] Visitor quick-fill demo accounts for `admin`, `dispatcher`, `customer`
 
 #### `/register`
 - [x] Full name/email/password/confirm password validation
@@ -161,6 +162,7 @@ Public signup includes role selection for `customer` or `dispatcher`; admin prov
 - No secret leakage (`.env.local` never committed)
 - No duplicated modules/tables/APIs
 - Mobile-safe responsive layout for operations pages
+- Modernized UI with Tailwind gradients, cards, charts, and subtle motion
 
 ---
 

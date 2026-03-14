@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RegisterPage() {
   return (
-    <Card>
+    <Card className="border-slate-200 shadow-lg">
       <CardHeader>
-        <CardTitle>Create Account</CardTitle>
+        <CardTitle className="text-2xl">Create Account</CardTitle>
       </CardHeader>
       <CardContent>
         <RegisterForm />

@@ -102,6 +102,14 @@
 - [x] Real-time tracking upgraded with live Supabase GPS subscriptions
 - [x] Warehouse integration completed with WMS sync bridge (`/api/integrations/wms`)
 
+## PHASE 14 — Visitor Access + UX Modernization
+
+- [x] Demo users provisioned in Supabase for all roles (`admin`, `dispatcher`, `customer`)
+- [x] Login screen supports one-click visitor credential autofill
+- [x] Auth flow redesigned with modern visual theme
+- [x] Dashboard upgraded with chart-style analytics and animated KPI cards
+- [x] Landing and shell UI refreshed with modern Tailwind styling and motion
+
 ---
 
 ## REMAINING (OPTIONAL ENHANCEMENTS)

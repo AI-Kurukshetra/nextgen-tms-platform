@@ -41,7 +41,7 @@ export function RegisterForm() {
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-2">
         <Label htmlFor="fullName">Full Name</Label>
         <Input id="fullName" {...register("fullName")} />
@@ -78,6 +78,10 @@ export function RegisterForm() {
       <Button className="w-full" type="submit" disabled={isPending}>
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Account"}
       </Button>
+
+      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        For visitor testing, use the demo accounts available on the login page.
+      </p>
 
       <p className="text-center text-sm text-gray-600">
         Already have an account?{" "}
