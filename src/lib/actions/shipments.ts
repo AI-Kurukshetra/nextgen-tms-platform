@@ -157,6 +157,7 @@ export async function createShipment(input: unknown): Promise<ActionResult<{ id:
       carrier_id: emptyToNull(payload.carrier_id),
       driver_id: emptyToNull(payload.driver_id),
       route_id: emptyToNull(payload.route_id),
+      customer_id: emptyToNull(payload.customer_id),
       origin_warehouse_id: emptyToNull(payload.origin_warehouse_id),
       destination_warehouse_id: emptyToNull(payload.destination_warehouse_id),
       scheduled_pickup: emptyToNull(payload.scheduled_pickup),

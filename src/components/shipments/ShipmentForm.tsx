@@ -23,17 +23,19 @@ type Carrier = Database["public"]["Tables"]["carriers"]["Row"];
 type Driver = Database["public"]["Tables"]["drivers"]["Row"];
 type Route = Database["public"]["Tables"]["routes"]["Row"];
 type Warehouse = Database["public"]["Tables"]["warehouses"]["Row"];
+type Customer = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "email">;
 
 type ShipmentFormProps = {
   carriers: Carrier[];
   drivers: Driver[];
   routes: Route[];
   warehouses: Warehouse[];
+  customers: Customer[];
 };
 
 type ShipmentFormValues = z.input<typeof createShipmentSchema>;
 
-export function ShipmentForm({ carriers, drivers, routes, warehouses }: ShipmentFormProps) {
+export function ShipmentForm({ carriers, drivers, routes, warehouses, customers }: ShipmentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isQuotePending, startQuoteTransition] = useTransition();
@@ -60,6 +62,7 @@ export function ShipmentForm({ carriers, drivers, routes, warehouses }: Shipment
       carrier_id: "",
       driver_id: "",
       route_id: "",
+      customer_id: "",
       origin_warehouse_id: "",
       destination_warehouse_id: "",
       scheduled_pickup: "",
@@ -244,6 +247,19 @@ export function ShipmentForm({ carriers, drivers, routes, warehouses }: Shipment
           ))}
         </Select>
         {errors.route_id && <p className="text-sm text-red-600">{errors.route_id.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="customer_id">Customer</Label>
+        <Select id="customer_id" {...register("customer_id")}>
+          <SelectItem value="">Select customer</SelectItem>
+          {customers.map((customer) => (
+            <SelectItem key={customer.id} value={customer.id}>
+              {customer.full_name} ({customer.email})
+            </SelectItem>
+          ))}
+        </Select>
+        {errors.customer_id && <p className="text-sm text-red-600">{errors.customer_id.message}</p>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

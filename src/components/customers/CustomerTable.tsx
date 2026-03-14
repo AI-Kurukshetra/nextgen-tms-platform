@@ -14,7 +14,7 @@ export function CustomerTable({ customers }: CustomerTableProps) {
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center">
         <Users className="mb-3 h-8 w-8 text-gray-400" />
         <h3 className="text-base font-medium text-gray-900">No customers found</h3>
-        <p className="mt-1 text-sm text-gray-500">Customers appear after they register with a customer role.</p>
+        <p className="mt-1 text-sm text-gray-500">Create a user with role `customer` from the form above.</p>
       </div>
     );
   }

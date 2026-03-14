@@ -20,6 +20,7 @@ export const createShipmentSchema = z.object({
   carrier_id: optionalUuid,
   driver_id: optionalUuid,
   route_id: optionalUuid,
+  customer_id: optionalUuid,
   origin_warehouse_id: optionalUuid,
   destination_warehouse_id: optionalUuid,
   scheduled_pickup: optionalDateTime,

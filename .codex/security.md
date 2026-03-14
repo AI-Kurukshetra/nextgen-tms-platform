@@ -22,6 +22,8 @@ Do not expose server keys to client bundles or route responses.
 - Use `supabase.auth.getUser()` for trusted checks.
 - Middleware protects operational paths.
 - Auth callback route must remain active: `src/app/auth/callback/route.ts`.
+- Public register flow always writes `role: customer` in signup metadata.
+- Duplicate email is blocked in register and admin/dispatcher user provisioning actions.
 
 ### Protected route groups
 - `/dashboard`
@@ -49,6 +51,7 @@ Role sources come from `profiles.role`.
 Server enforcement points:
 - server actions (`src/lib/actions/*`)
 - API route handlers via `src/lib/api-auth.ts`
+- middleware role redirects for customer vs ops paths
 
 ---
 
@@ -101,6 +104,7 @@ High-risk mutation endpoints (for example `POST /api/tracking/live`) must be rol
 - No server keys in client components.
 - Do not call privileged Supabase admin APIs from browser code.
 - All sensitive operations happen server-side.
+- User provisioning and role updates run through server actions using service-role server client only.
 
 ---
 

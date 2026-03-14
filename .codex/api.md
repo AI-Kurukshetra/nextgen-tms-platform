@@ -119,3 +119,4 @@ Response.json({ error: "message" }, { status: 4xx | 5xx })
 - Avoid duplicate APIs when server actions already solve the flow.
 - Keep payload schemas strict (`zod`) for every POST endpoint.
 - Keep route handlers side-effect aware (write operations are role-gated and logged where needed).
+- User provisioning and role assignment are server actions (`createUserAccount`, `updateUserRole`) backed by server-only admin client.

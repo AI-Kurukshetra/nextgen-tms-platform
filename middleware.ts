@@ -53,6 +53,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  if (user && isProtected) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    const role = profile?.role ?? null;
+
+    if (role === "customer") {
+      const customerAllowed =
+        pathname.startsWith("/customer") || pathname === "/shipments" || pathname.startsWith("/shipments/");
+
+      if (!customerAllowed || pathname === "/shipments/new") {
+        return NextResponse.redirect(new URL("/customer", request.url));
+      }
+    }
+
+    if (role && role !== "customer" && pathname.startsWith("/customer")) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   return response;
 }
 

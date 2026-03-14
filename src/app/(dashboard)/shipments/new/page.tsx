@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ShipmentForm } from "@/components/shipments/ShipmentForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveCarriers } from "@/lib/actions/carriers";
+import { getCustomerOptions } from "@/lib/actions/customers";
 import { getAvailableDrivers } from "@/lib/actions/drivers";
 import { getRoutes } from "@/lib/actions/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -25,11 +26,12 @@ export default async function NewShipmentPage() {
     redirect("/shipments");
   }
 
-  const [carriers, drivers, routes, warehouses] = await Promise.all([
+  const [carriers, drivers, routes, warehouses, customers] = await Promise.all([
     getActiveCarriers(),
     getAvailableDrivers(),
     getRoutes(),
     getActiveWarehouses(),
+    getCustomerOptions(),
   ]);
 
   return (
@@ -45,6 +47,7 @@ export default async function NewShipmentPage() {
             drivers={drivers.data ?? []}
             routes={routes.data ?? []}
             warehouses={warehouses.data ?? []}
+            customers={customers.data ?? []}
           />
         </CardContent>
       </Card>

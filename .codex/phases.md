@@ -83,6 +83,14 @@
 - [x] Invoice workflow (`invoices`, `payments`) with issue + payment recording
 - [x] Seeded sample documents/invoices/payments in Supabase
 
+## PHASE 12 — Dynamic User & Role Operations
+
+- [x] Customer/user management page made operational (create + role visibility)
+- [x] Admin role update action implemented for existing users
+- [x] Dispatcher account creation restricted to customer role
+- [x] Shipment creation supports assigning a customer (`customer_id`)
+- [x] Middleware role gating redirects customer users away from ops-only pages
+
 ---
 
 ## REMAINING (OPTIONAL ENHANCEMENTS)

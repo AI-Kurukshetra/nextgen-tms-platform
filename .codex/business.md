@@ -21,7 +21,7 @@ This build targets a production-ready core for operations teams and customer vis
 | `dispatcher` | Full operational access except restricted admin-only actions |
 | `customer` | Read-only customer portal and own shipment visibility |
 
-Default signup role is `dispatcher` unless overridden by admin provisioning rules.
+Public signup role is `customer`; admin provisioning can create `admin`, `dispatcher`, or `customer`.
 
 ---
 
@@ -30,7 +30,7 @@ Default signup role is `dispatcher` unless overridden by admin provisioning rule
 | Module | Scope | Status |
 |---|---|---|
 | Authentication & User Management | login, register, session, role-gated UI, middleware protection | Implemented |
-| Customer Management | customer self-service portal, customer list view for ops role | Implemented |
+| Customer Management | customer self-service portal, user creation with role, customer directory | Implemented |
 | Shipment Management | create/list/detail/delete, status workflow, risk, tracking timeline | Implemented |
 | Carrier & Fleet Management | carriers + drivers + assignment visibility | Implemented |
 | Route Management | route catalog, mode and active filtering + optimization assistant | Implemented |
@@ -79,6 +79,7 @@ Default signup role is `dispatcher` unless overridden by admin provisioning rule
 #### `/shipments/new`
 - [x] Typed form with all required shipping/assignment/schedule/cost fields
 - [x] Dropdown data sourced from active carriers/drivers/routes/warehouses
+- [x] Customer assignment (`customer_id`) from customer dropdown
 - [x] Successful create redirects to shipment detail
 
 #### `/shipments/[id]`
@@ -123,6 +124,8 @@ Default signup role is `dispatcher` unless overridden by admin provisioning rule
 
 #### `/customers`
 - [x] Ops-facing customer directory with shipment activity metrics
+- [x] Create user accounts with role (`customer` by dispatcher, all roles by admin)
+- [x] Admin role update control for existing users
 
 ---
 
