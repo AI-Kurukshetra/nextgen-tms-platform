@@ -100,6 +100,7 @@ Public signup includes role selection for `customer` or `dispatcher`; admin prov
 
 #### `/drivers/mobile`
 - [x] Driver assignment feed for mobile workflow
+- [x] Driver trip lifecycle actions (start/resume/complete) with POD capture
 
 #### `/routes`
 - [x] Mode + active filters
@@ -110,12 +111,17 @@ Public signup includes role selection for `customer` or `dispatcher`; admin prov
 
 #### `/inventory`
 - [x] Warehouse-level inbound/outbound/in-transit inventory flow metrics
+- [x] WMS integration bridge for inbound/outbound sync updates
 
 #### `/rates`
 - [x] Freight quote calculator and pricing transparency
 
 #### `/invoicing`
 - [x] Freight audit checks for billing mismatch/risk cues
+- [x] Invoice issue + partial/full payment posting + payment trail
+
+#### `/reports`
+- [x] KPI analytics for delivery performance, cost efficiency, and carrier performance
 
 ### Customer Experience
 
@@ -143,7 +149,7 @@ Public signup includes role selection for `customer` or `dispatcher`; admin prov
 - Invoicing Audit: `/api/invoicing/audit`
 - Inventory Visibility: `/api/inventory/visibility`
 - Reports KPIs: `/api/reports/kpis`
-- Integrations: `/api/integrations/edi`, `/api/integrations/load-board`
+- Integrations: `/api/integrations/edi`, `/api/integrations/load-board`, `/api/integrations/wms`
 - Driver Mobile Feed: `/api/drivers/mobile`
 
 ---

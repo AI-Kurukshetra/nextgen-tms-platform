@@ -1,16 +1,23 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { issueInvoiceForShipment, recordInvoicePayment, type InvoicingRow } from "@/lib/actions/invoicing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectItem } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
 
 export function InvoicingWorkflowTable({ rows }: { rows: InvoicingRow[] }) {
   const [isPending, startTransition] = useTransition();
+  const [amountByInvoice, setAmountByInvoice] = useState<Record<string, string>>({});
+  const [methodByInvoice, setMethodByInvoice] = useState<
+    Record<string, "bank_transfer" | "upi" | "card" | "cash" | "other">
+  >({});
+  const [referenceByInvoice, setReferenceByInvoice] = useState<Record<string, string>>({});
 
   const issueInvoice = (shipmentId: string) => {
     startTransition(async () => {
@@ -24,13 +31,27 @@ export function InvoicingWorkflowTable({ rows }: { rows: InvoicingRow[] }) {
   };
 
   const receivePayment = (invoiceId: string) => {
+    const inputAmount = amountByInvoice[invoiceId];
+    const parsedAmount = inputAmount ? Number(inputAmount) : undefined;
+
+    if (parsedAmount !== undefined && Number.isNaN(parsedAmount)) {
+      toast.error("Enter a valid payment amount");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await recordInvoicePayment(invoiceId);
+      const result = await recordInvoicePayment(invoiceId, {
+        amount_inr: parsedAmount,
+        method: methodByInvoice[invoiceId] ?? "bank_transfer",
+        reference_no: referenceByInvoice[invoiceId]?.trim() || undefined,
+      });
       if (result.error) {
         toast.error(result.error);
         return;
       }
       toast.success("Payment recorded");
+      setAmountByInvoice((prev) => ({ ...prev, [invoiceId]: "" }));
+      setReferenceByInvoice((prev) => ({ ...prev, [invoiceId]: "" }));
     });
   };
 
@@ -51,13 +72,15 @@ export function InvoicingWorkflowTable({ rows }: { rows: InvoicingRow[] }) {
         </thead>
         <tbody>
           {rows.map((row) => {
-            const invoiceStatus = row.invoice?.status ?? "draft";
+            const invoiceStatus = row.invoice_status;
             const auditColor =
               row.audit.status === "approved"
                 ? "bg-green-100 text-green-700 border-green-200"
                 : row.audit.status === "review"
                   ? "bg-amber-100 text-amber-700 border-amber-200"
                   : "bg-red-100 text-red-700 border-red-200";
+            const invoiceId = row.invoice?.id ?? null;
+            const recentPayments = row.payments.slice(0, 2);
 
             return (
               <tr key={row.shipment.id} className="border-t">
@@ -90,19 +113,59 @@ export function InvoicingWorkflowTable({ rows }: { rows: InvoicingRow[] }) {
                     >
                       Issue / Refresh
                     </Button>
-                    {row.invoice && row.outstanding > 0 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={isPending}
-                        onClick={() => receivePayment(row.invoice!.id)}
-                      >
-                        Receive Payment
-                      </Button>
+                    {invoiceId && row.outstanding > 0 && (
+                      <>
+                        <Input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={amountByInvoice[invoiceId] ?? ""}
+                          onChange={(event) =>
+                            setAmountByInvoice((prev) => ({ ...prev, [invoiceId]: event.target.value }))
+                          }
+                          placeholder={`Up to ${row.outstanding.toFixed(2)}`}
+                          className="h-8 w-36"
+                        />
+                        <Select
+                          value={methodByInvoice[invoiceId] ?? "bank_transfer"}
+                          onValueChange={(value) =>
+                            setMethodByInvoice((prev) => ({
+                              ...prev,
+                              [invoiceId]: value as "bank_transfer" | "upi" | "card" | "cash" | "other",
+                            }))
+                          }
+                          className="h-8 w-32"
+                        >
+                          <SelectItem value="bank_transfer">Bank</SelectItem>
+                          <SelectItem value="upi">UPI</SelectItem>
+                          <SelectItem value="card">Card</SelectItem>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </Select>
+                        <Input
+                          value={referenceByInvoice[invoiceId] ?? ""}
+                          onChange={(event) =>
+                            setReferenceByInvoice((prev) => ({ ...prev, [invoiceId]: event.target.value }))
+                          }
+                          placeholder="Reference"
+                          className="h-8 w-32"
+                        />
+                        <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={() => receivePayment(invoiceId)}>
+                          Receive Payment
+                        </Button>
+                      </>
                     )}
                     {isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-500" />}
                   </div>
+                  {recentPayments.length > 0 && (
+                    <div className="mt-2 space-y-1 text-xs text-gray-600">
+                      {recentPayments.map((payment) => (
+                        <p key={payment.id}>
+                          {formatCurrency(payment.amount_inr)} via {payment.method}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </td>
               </tr>
             );

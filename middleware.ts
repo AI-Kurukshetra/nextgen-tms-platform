@@ -12,6 +12,7 @@ const PROTECTED_PATHS = [
   "/inventory",
   "/rates",
   "/invoicing",
+  "/reports",
   "/customer",
 ];
 

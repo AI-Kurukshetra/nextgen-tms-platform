@@ -57,7 +57,8 @@ Primary action modules:
 | `/api/inventory/visibility` | `GET` | Warehouse flow metrics | Admin/Dispatcher |
 | `/api/reports/kpis` | `GET` | KPI counters for reporting | Admin/Dispatcher |
 | `/api/integrations/edi` | `GET` | EDI 214 payload generation | Admin/Dispatcher |
-| `/api/integrations/load-board` | `POST` | Load board payload generation/post-log | Admin/Dispatcher |
+| `/api/integrations/load-board` | `GET/POST` | Load board payload generation + post history | Admin/Dispatcher |
+| `/api/integrations/wms` | `GET/POST` | WMS sync bridge for inbound/outbound movement updates | Admin/Dispatcher |
 | `/api/drivers/mobile` | `GET` | Mobile driver assignment feed | Admin/Dispatcher |
 
 ---

@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateDriverStatus } from "@/lib/actions/drivers";
+import { updateShipmentStatus } from "@/lib/actions/shipments";
+import { addShipmentDocument } from "@/lib/actions/tracking";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Database } from "@/types/database";
 
 type Driver = Database["public"]["Tables"]["drivers"]["Row"];
@@ -20,9 +24,11 @@ type Assignment = {
 };
 
 export function MobileDriverBoard({ drivers, assignments }: { drivers: Driver[]; assignments: Assignment[] }) {
+  const router = useRouter();
   const [selectedDriverId, setSelectedDriverId] = useState(drivers[0]?.id ?? "");
   const [isPending, startTransition] = useTransition();
   const [isSendingGps, setIsSendingGps] = useState(false);
+  const [podUrls, setPodUrls] = useState<Record<string, string>>({});
 
   const selectedDriver = drivers.find((driver) => driver.id === selectedDriverId) ?? null;
 
@@ -92,6 +98,64 @@ export function MobileDriverBoard({ drivers, assignments }: { drivers: Driver[];
     }
   };
 
+  const markInTransit = (shipmentId: string) => {
+    startTransition(async () => {
+      const [shipmentResult, driverResult] = await Promise.all([
+        updateShipmentStatus(shipmentId, "in_transit"),
+        updateDriverStatus(selectedDriver.id, "on_trip"),
+      ]);
+
+      if (shipmentResult.error) {
+        toast.error(shipmentResult.error);
+        return;
+      }
+      if (driverResult.error) {
+        toast.error(driverResult.error);
+        return;
+      }
+
+      toast.success("Shipment marked in transit");
+      router.refresh();
+    });
+  };
+
+  const markDelivered = (shipment: Assignment) => {
+    const podUrl = (podUrls[shipment.id] ?? "").trim();
+    if (!podUrl) {
+      toast.error("Proof of delivery URL is required to complete delivery");
+      return;
+    }
+
+    startTransition(async () => {
+      const docResult = await addShipmentDocument(
+        shipment.id,
+        `POD-${shipment.shipment_number}`,
+        podUrl,
+        "pod",
+      );
+      if (docResult.error) {
+        toast.error(docResult.error);
+        return;
+      }
+
+      const shipmentResult = await updateShipmentStatus(shipment.id, "delivered");
+      if (shipmentResult.error) {
+        toast.error(shipmentResult.error);
+        return;
+      }
+
+      const driverResult = await updateDriverStatus(selectedDriver.id, "available");
+      if (driverResult.error) {
+        toast.error(driverResult.error);
+        return;
+      }
+
+      setPodUrls((prev) => ({ ...prev, [shipment.id]: "" }));
+      toast.success("Delivery completed with POD");
+      router.refresh();
+    });
+  };
+
   return (
     <div className="space-y-3">
       <select
@@ -127,16 +191,39 @@ export function MobileDriverBoard({ drivers, assignments }: { drivers: Driver[];
               <p className="font-medium text-gray-900">{assignment.shipment_number}</p>
               <p className="text-gray-700">{assignment.origin_city} to {assignment.destination_city}</p>
               <p className="text-xs text-gray-500">Status: {assignment.status}</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mt-2"
-                disabled={isSendingGps}
-                onClick={() => void sendGpsPing(assignment.id)}
-              >
-                {isSendingGps ? "Sending..." : "Send GPS Ping"}
-              </Button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isSendingGps}
+                  onClick={() => void sendGpsPing(assignment.id)}
+                >
+                  {isSendingGps ? "Sending..." : "Send GPS Ping"}
+                </Button>
+                {assignment.status === "assigned" && (
+                  <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={() => markInTransit(assignment.id)}>
+                    Start Trip
+                  </Button>
+                )}
+                {assignment.status === "delayed" && (
+                  <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={() => markInTransit(assignment.id)}>
+                    Resume Trip
+                  </Button>
+                )}
+              </div>
+              {assignment.status === "in_transit" && (
+                <div className="mt-2 space-y-2">
+                  <Input
+                    value={podUrls[assignment.id] ?? ""}
+                    onChange={(event) => setPodUrls((prev) => ({ ...prev, [assignment.id]: event.target.value }))}
+                    placeholder="Proof of Delivery URL"
+                  />
+                  <Button type="button" size="sm" disabled={isPending} onClick={() => markDelivered(assignment)}>
+                    Mark Delivered + Upload POD
+                  </Button>
+                </div>
+              )}
             </div>
           ))
         )}

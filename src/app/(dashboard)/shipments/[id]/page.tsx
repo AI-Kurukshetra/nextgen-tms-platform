@@ -63,6 +63,62 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
     .eq("shipment_id", shipment.id)
     .order("recorded_at", { ascending: false })
     .limit(10);
+  const { data: loadBoardEvents } = await supabase
+    .from("tracking_events")
+    .select("id, created_at, description")
+    .eq("shipment_id", shipment.id)
+    .eq("event_type", "note_added")
+    .like("description", "LOAD_BOARD|%")
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const { data: notificationEvents } = await supabase
+    .from("tracking_events")
+    .select("id, created_at, description")
+    .eq("shipment_id", shipment.id)
+    .eq("event_type", "note_added")
+    .like("description", "NOTIF|%")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const loadBoardHistory = (loadBoardEvents ?? [])
+    .map((event) => {
+      try {
+        const payload = JSON.parse(event.description.replace("LOAD_BOARD|", "")) as {
+          provider?: string;
+          status?: string;
+          posted_rate_inr?: number | null;
+        };
+        return { id: event.id, created_at: event.created_at, payload };
+      } catch {
+        return null;
+      }
+    })
+    .filter(
+      (
+        item,
+      ): item is { id: string; created_at: string; payload: { provider?: string; status?: string; posted_rate_inr?: number | null } } =>
+        Boolean(item),
+    );
+
+  const notificationHistory = (notificationEvents ?? [])
+    .map((event) => {
+      try {
+        const payload = JSON.parse(event.description.replace("NOTIF|", "")) as {
+          channel: "email" | "sms";
+          recipient: string;
+          message: string;
+        };
+        return { id: event.id, created_at: event.created_at, ...payload };
+      } catch {
+        return null;
+      }
+    })
+    .filter(
+      (
+        item,
+      ): item is { id: string; created_at: string; channel: "email" | "sms"; recipient: string; message: string } =>
+        Boolean(item),
+    );
 
   return (
     <div className="space-y-4">
@@ -187,7 +243,7 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
             <CardTitle>Integration Hub (EDI & Load Board)</CardTitle>
           </CardHeader>
           <CardContent>
-            <IntegrationPanel shipmentId={shipment.id} />
+            <IntegrationPanel shipmentId={shipment.id} initialHistory={loadBoardHistory} />
           </CardContent>
         </Card>
       </div>
@@ -207,7 +263,7 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
             <CardTitle>Customer Communication</CardTitle>
           </CardHeader>
           <CardContent>
-            <NotificationSender shipmentId={shipment.id} canManage={canManage} />
+            <NotificationSender shipmentId={shipment.id} canManage={canManage} initialHistory={notificationHistory} />
           </CardContent>
         </Card>
       </div>

@@ -92,6 +92,16 @@
 - [x] Middleware role gating redirects customer users away from ops-only pages
 - [x] Register/login now include explicit role selection with server-side role match validation
 
+## PHASE 13 — Partial Module Completion
+
+- [x] Reporting module completed with `/reports` page and advanced KPI analytics
+- [x] Freight payment workflow upgraded to partial/full payment capture and invoice status handling
+- [x] Load board integration now includes post history retrieval
+- [x] Customer communication now includes notification history tracking
+- [x] Driver mobile workflow includes trip lifecycle and POD capture
+- [x] Real-time tracking upgraded with live Supabase GPS subscriptions
+- [x] Warehouse integration completed with WMS sync bridge (`/api/integrations/wms`)
+
 ---
 
 ## REMAINING (OPTIONAL ENHANCEMENTS)

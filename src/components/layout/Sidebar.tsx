@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  BarChart3,
   Calculator,
   ClipboardList,
   Map,
@@ -47,6 +48,7 @@ const linksByRole = (role: string | null) => {
     { href: "/inventory", label: "Inventory", icon: Boxes },
     { href: "/rates", label: "Rates", icon: Calculator },
     { href: "/invoicing", label: "Invoicing", icon: ClipboardList },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
   ];
 };
 

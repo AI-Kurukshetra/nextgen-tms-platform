@@ -5,6 +5,7 @@ import { Loader2, Navigation2, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
@@ -45,12 +46,38 @@ export function LiveLocationCard({ shipmentId, initialPoints }: LiveLocationCard
   }, [shipmentId]);
 
   useEffect(() => {
+    void fetchLatest();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`gps-locations-${shipmentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "gps_locations",
+          filter: `shipment_id=eq.${shipmentId}`,
+        },
+        (payload) => {
+          const point = payload.new as GpsPoint;
+          setPoints((current) => {
+            const merged = [point, ...current.filter((item) => item.id !== point.id)];
+            return merged.sort((a, b) => (a.recorded_at < b.recorded_at ? 1 : -1)).slice(0, 10);
+          });
+        },
+      )
+      .subscribe();
+
     const timer = setInterval(() => {
       void fetchLatest();
     }, 30000);
 
-    return () => clearInterval(timer);
-  }, [fetchLatest]);
+    return () => {
+      clearInterval(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchLatest, shipmentId]);
 
   return (
     <div className="space-y-3 text-sm text-gray-700">

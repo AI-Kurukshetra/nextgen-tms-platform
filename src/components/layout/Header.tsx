@@ -33,6 +33,7 @@ const routeTitles: Record<string, string> = {
   inventory: "Inventory Visibility",
   rates: "Rate Management",
   invoicing: "Freight Audit & Payment",
+  reports: "Reporting & Analytics",
 };
 
 function getTitle(pathname: string) {

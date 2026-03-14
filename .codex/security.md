@@ -37,6 +37,7 @@ Do not expose server keys to client bundles or route responses.
 - `/inventory`
 - `/rates`
 - `/invoicing`
+- `/reports`
 
 ---
 

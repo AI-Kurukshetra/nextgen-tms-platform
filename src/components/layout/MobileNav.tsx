@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Calculator, ClipboardList, LayoutDashboard, Map, Menu, Package, Truck, User, Users, Warehouse } from "lucide-react";
+import { BarChart3, Boxes, Calculator, ClipboardList, LayoutDashboard, Map, Menu, Package, Truck, User, Users, Warehouse } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,7 @@ const linksByRole = (role: string | null) => {
     { href: "/inventory", label: "Inventory", icon: Boxes },
     { href: "/rates", label: "Rates", icon: Calculator },
     { href: "/invoicing", label: "Invoicing", icon: ClipboardList },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
   ];
 };
 

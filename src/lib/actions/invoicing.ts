@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { runFreightAudit } from "@/lib/freight-audit";
 import { createClient } from "@/lib/supabase/server";
@@ -20,10 +21,18 @@ type ActionResult<T> = {
 export type InvoicingRow = {
   shipment: ShipmentRow;
   invoice: InvoiceRow | null;
+  invoice_status: InvoiceRow["status"] | "draft";
   paidAmount: number;
   outstanding: number;
+  payments: PaymentRow[];
   audit: ReturnType<typeof runFreightAudit>;
 };
+
+const paymentInputSchema = z.object({
+  amount_inr: z.number().positive().optional(),
+  method: z.enum(["bank_transfer", "upi", "card", "cash", "other"]).optional(),
+  reference_no: z.string().trim().max(100).optional(),
+});
 
 function invoiceNumber() {
   return `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 100000)}`;
@@ -81,8 +90,12 @@ export async function getInvoicingOverview(): Promise<ActionResult<InvoicingRow[
   const invoicesByShipmentId = new Map(invoices.map((invoice) => [invoice.shipment_id, invoice]));
 
   const paidByInvoiceId = new Map<string, number>();
+  const paymentsByInvoiceId = new Map<string, PaymentRow[]>();
   for (const payment of (paymentsResult.data ?? []) as PaymentRow[]) {
     paidByInvoiceId.set(payment.invoice_id, (paidByInvoiceId.get(payment.invoice_id) ?? 0) + Number(payment.amount_inr));
+    const list = paymentsByInvoiceId.get(payment.invoice_id) ?? [];
+    list.push(payment);
+    paymentsByInvoiceId.set(payment.invoice_id, list);
   }
 
   const rows = (shipments ?? []).map((shipment) => {
@@ -92,12 +105,22 @@ export async function getInvoicingOverview(): Promise<ActionResult<InvoicingRow[
     const invoice = invoicesByShipmentId.get(shipment.id) ?? null;
     const paidAmount = invoice ? Number(paidByInvoiceId.get(invoice.id) ?? 0) : 0;
     const outstanding = invoice ? Math.max(0, Number(invoice.total_inr) - paidAmount) : 0;
+    const payments = invoice ? (paymentsByInvoiceId.get(invoice.id) ?? []).sort((a, b) => (a.paid_at < b.paid_at ? 1 : -1)) : [];
+    const isOverdue = Boolean(
+      invoice &&
+        outstanding > 0 &&
+        invoice.status !== "cancelled" &&
+        invoice.due_at &&
+        new Date(invoice.due_at).getTime() < Date.now(),
+    );
 
     return {
       shipment,
       invoice,
+      invoice_status: invoice ? (isOverdue ? "overdue" : invoice.status) : "draft",
       paidAmount,
       outstanding,
+      payments,
       audit,
     };
   });
@@ -152,7 +175,10 @@ export async function issueInvoiceForShipment(shipmentId: string): Promise<Actio
   return { data, error: null };
 }
 
-export async function recordInvoicePayment(invoiceId: string): Promise<ActionResult<null>> {
+export async function recordInvoicePayment(
+  invoiceId: string,
+  input?: { amount_inr?: number; method?: PaymentRow["method"]; reference_no?: string | null },
+): Promise<ActionResult<null>> {
   const { supabase, user, role } = await getSessionRole();
 
   if (!user) return { data: null, error: "Unauthorized" };
@@ -169,11 +195,30 @@ export async function recordInvoicePayment(invoiceId: string): Promise<ActionRes
     return { data: null, error: "Invoice already fully paid" };
   }
 
+  const parsed = paymentInputSchema.safeParse({
+    amount_inr: input?.amount_inr,
+    method: input?.method,
+    reference_no: input?.reference_no ?? undefined,
+  });
+
+  if (!parsed.success) {
+    return { data: null, error: parsed.error.issues[0]?.message ?? "Invalid payment payload" };
+  }
+
+  const amountToPay = Number((parsed.data.amount_inr ?? outstanding).toFixed(2));
+  if (amountToPay <= 0) {
+    return { data: null, error: "Payment amount must be greater than zero" };
+  }
+
+  if (amountToPay > outstanding) {
+    return { data: null, error: "Payment amount cannot exceed outstanding balance" };
+  }
+
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
-    amount_inr: Number(outstanding.toFixed(2)),
-    method: "bank_transfer",
-    reference_no: `PAY-${Date.now()}`,
+    amount_inr: amountToPay,
+    method: parsed.data.method ?? "bank_transfer",
+    reference_no: parsed.data.reference_no || `PAY-${Date.now()}`,
     created_by: user.id,
   });
 
@@ -181,9 +226,17 @@ export async function recordInvoicePayment(invoiceId: string): Promise<ActionRes
     return { data: null, error: paymentError.message };
   }
 
+  const remaining = Number((outstanding - amountToPay).toFixed(2));
+  const nextStatus: InvoiceRow["status"] =
+    remaining <= 0
+      ? "paid"
+      : invoice.due_at && new Date(invoice.due_at).getTime() < Date.now()
+        ? "overdue"
+        : "issued";
+
   const { error: updateError } = await supabase
     .from("invoices")
-    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .update({ status: nextStatus, paid_at: remaining <= 0 ? new Date().toISOString() : null })
     .eq("id", invoiceId);
 
   if (updateError) {

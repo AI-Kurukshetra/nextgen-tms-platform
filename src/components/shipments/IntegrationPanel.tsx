@@ -5,18 +5,34 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/utils";
 
 type IntegrationPanelProps = {
   shipmentId: string;
+  initialHistory: { id: string; created_at: string; payload: { provider?: string; status?: string; posted_rate_inr?: number | null } }[];
 };
 
-export function IntegrationPanel({ shipmentId }: IntegrationPanelProps) {
+export function IntegrationPanel({ shipmentId, initialHistory }: IntegrationPanelProps) {
   const [ediPayload, setEdiPayload] = useState("");
   const [loadBoardPayload, setLoadBoardPayload] = useState("");
+  const [history, setHistory] = useState<
+    { id: string; created_at: string; payload: { provider?: string; status?: string; posted_rate_inr?: number | null } }[]
+  >(initialHistory);
   const [provider, setProvider] = useState<"nextgen_exchange" | "freight_tiger" | "trucksuvidha">(
     "nextgen_exchange",
   );
   const [isPending, startTransition] = useTransition();
+
+  const loadHistory = async () => {
+    const res = await fetch(`/api/integrations/load-board?shipment_id=${shipmentId}`);
+    const json = (await res.json()) as {
+      data?: { id: string; created_at: string; payload: { provider?: string; status?: string; posted_rate_inr?: number | null } }[];
+    };
+
+    if (res.ok) {
+      setHistory(json.data ?? []);
+    }
+  };
 
   const fetchEdi = () => {
     startTransition(async () => {
@@ -48,6 +64,7 @@ export function IntegrationPanel({ shipmentId }: IntegrationPanelProps) {
       }
 
       setLoadBoardPayload(JSON.stringify(json.payload, null, 2));
+      await loadHistory();
       toast.success("Posted to load board");
     });
   };
@@ -76,6 +93,16 @@ export function IntegrationPanel({ shipmentId }: IntegrationPanelProps) {
       {ediPayload && <pre className="overflow-x-auto rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">{ediPayload}</pre>}
       {loadBoardPayload && (
         <pre className="overflow-x-auto rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">{loadBoardPayload}</pre>
+      )}
+      {history.length > 0 && (
+        <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-2">
+          <p className="text-xs font-semibold text-gray-700">Load Board History</p>
+          {history.map((item) => (
+            <p key={item.id} className="text-xs text-gray-600">
+              {formatDateTime(item.created_at)} · {item.payload.provider ?? "unknown"} · {item.payload.status ?? "posted"}
+            </p>
+          ))}
+        </div>
       )}
     </div>
   );

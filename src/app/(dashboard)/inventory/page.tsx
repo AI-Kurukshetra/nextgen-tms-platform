@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WmsSyncPanel } from "@/components/inventory/WmsSyncPanel";
 import { getInventoryVisibility } from "@/lib/actions/inventory";
 
 export default async function InventoryPage() {
@@ -24,6 +25,8 @@ export default async function InventoryPage() {
           </Card>
         ))}
       </div>
+
+      <WmsSyncPanel />
     </div>
   );
 }
