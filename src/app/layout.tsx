@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Toaster } from "sonner";
+
+import { NavigationProgress } from "@/components/ui/NavigationProgress";
 
 import "./globals.css";
 
@@ -12,6 +15,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className="antialiased">
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         {children}
         <Toaster richColors closeButton position="top-right" />
       </body>

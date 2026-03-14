@@ -1,5 +1,7 @@
 import { AlertCircle, Building, CheckCircle, Package, Truck, User } from "lucide-react";
 
+import { LineChart } from "@/components/charts/LineChart";
+import { PieChart } from "@/components/charts/PieChart";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ShipmentStatusBadge } from "@/components/shipments/ShipmentStatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +13,6 @@ import type { Database } from "@/types/database";
 
 type Shipment = Database["public"]["Tables"]["shipments"]["Row"];
 
-const STATUS_COLORS: Record<Shipment["status"], string> = {
-  draft: "bg-slate-500",
-  confirmed: "bg-blue-500",
-  assigned: "bg-violet-500",
-  in_transit: "bg-amber-500",
-  delivered: "bg-emerald-500",
-  delayed: "bg-red-500",
-  cancelled: "bg-slate-400",
-};
-
 const STATUS_LABELS: Record<Shipment["status"], string> = {
   draft: "Draft",
   confirmed: "Confirmed",
@@ -30,18 +22,6 @@ const STATUS_LABELS: Record<Shipment["status"], string> = {
   delayed: "Delayed",
   cancelled: "Cancelled",
 };
-
-function widthClass(percent: number) {
-  if (percent >= 95) return "w-full";
-  if (percent >= 80) return "w-5/6";
-  if (percent >= 65) return "w-2/3";
-  if (percent >= 50) return "w-1/2";
-  if (percent >= 35) return "w-1/3";
-  if (percent >= 20) return "w-1/4";
-  if (percent >= 10) return "w-1/6";
-  if (percent > 0) return "w-1/12";
-  return "w-0";
-}
 
 export default async function DashboardPage() {
   const [stats, shipmentsResult] = await Promise.all([getDashboardStats(), getShipments()]);
@@ -65,7 +45,24 @@ export default async function DashboardPage() {
     monthly.set(month, (monthly.get(month) ?? 0) + 1);
   }
   const monthlyTrend = Array.from(monthly.entries()).slice(-6);
-  const maxMonthValue = Math.max(1, ...monthlyTrend.map(([, count]) => count));
+  const pieData = (Object.keys(statusDistribution) as Shipment["status"][]).map((status) => ({
+    label: STATUS_LABELS[status],
+    value: statusDistribution[status],
+    color:
+      status === "draft"
+        ? "#64748B"
+        : status === "confirmed"
+          ? "#3B82F6"
+          : status === "assigned"
+            ? "#8B5CF6"
+            : status === "in_transit"
+              ? "#F59E0B"
+              : status === "delivered"
+                ? "#10B981"
+                : status === "delayed"
+                  ? "#EF4444"
+                  : "#94A3B8",
+  }));
 
   return (
     <div className="space-y-6">
@@ -124,24 +121,8 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-base">Shipment Status Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {(Object.keys(statusDistribution) as Shipment["status"][]).map((status) => {
-              const count = statusDistribution[status];
-              const percent = allShipments.length === 0 ? 0 : Math.round((count / allShipments.length) * 100);
-              return (
-                <div key={status} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm text-slate-700">
-                    <span>{STATUS_LABELS[status]}</span>
-                    <span>{count}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-700 ${STATUS_COLORS[status]} ${widthClass(percent)}`}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <CardContent>
+            <PieChart data={pieData} />
           </CardContent>
         </Card>
 
@@ -149,23 +130,14 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-base">Monthly Shipment Trend</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {monthlyTrend.length === 0 ? (
-              <p className="text-sm text-slate-500">No trend data available.</p>
-            ) : (
-              monthlyTrend.map(([month, count]) => {
-                const percent = Math.round((count / maxMonthValue) * 100);
-                return (
-                  <div key={month} className="grid grid-cols-[56px_1fr_30px] items-center gap-2 text-sm">
-                    <span className="text-slate-600">{month}</span>
-                    <div className="h-2 rounded-full bg-slate-100">
-                      <div className={`h-2 rounded-full bg-cyan-500 transition-all duration-700 ${widthClass(percent)}`} />
-                    </div>
-                    <span className="text-right text-slate-700">{count}</span>
-                  </div>
-                );
-              })
-            )}
+          <CardContent>
+            <LineChart
+              data={monthlyTrend.map(([month, count]) => ({
+                label: month,
+                value: count,
+              }))}
+              stroke="#06B6D4"
+            />
           </CardContent>
         </Card>
       </section>

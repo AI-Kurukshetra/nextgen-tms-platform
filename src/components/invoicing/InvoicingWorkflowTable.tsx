@@ -56,7 +56,7 @@ export function InvoicingWorkflowTable({ rows }: { rows: InvoicingRow[] }) {
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl bg-white/80">
       <table className="w-full text-sm">
         <thead className="bg-gray-50">
           <tr>

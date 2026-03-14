@@ -1,6 +1,10 @@
 import { Activity, Clock3, IndianRupee, PackageCheck, Truck } from "lucide-react";
 
+import { BarChart } from "@/components/charts/BarChart";
+import { LineChart } from "@/components/charts/LineChart";
+import { PieChart } from "@/components/charts/PieChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getReportingAnalytics } from "@/lib/actions/reports";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,18 +18,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-function widthClass(percent: number) {
-  if (percent >= 95) return "w-full";
-  if (percent >= 80) return "w-5/6";
-  if (percent >= 65) return "w-2/3";
-  if (percent >= 50) return "w-1/2";
-  if (percent >= 35) return "w-1/3";
-  if (percent >= 20) return "w-1/4";
-  if (percent >= 10) return "w-1/6";
-  if (percent > 0) return "w-1/12";
-  return "w-0";
-}
-
 export default async function ReportsPage() {
   const { data, error } = await getReportingAnalytics();
 
@@ -37,6 +29,25 @@ export default async function ReportsPage() {
       </div>
     );
   }
+
+  const pieData = Object.entries(data.status_distribution).map(([status, value]) => ({
+    label: STATUS_LABELS[status] ?? status,
+    value,
+    color:
+      status === "draft"
+        ? "#64748B"
+        : status === "confirmed"
+          ? "#3B82F6"
+          : status === "assigned"
+            ? "#8B5CF6"
+            : status === "in_transit"
+              ? "#F59E0B"
+              : status === "delivered"
+                ? "#10B981"
+                : status === "delayed"
+                  ? "#EF4444"
+                  : "#94A3B8",
+  }));
 
   return (
     <div className="space-y-4">
@@ -102,22 +113,8 @@ export default async function ReportsPage() {
           <CardHeader>
             <CardTitle>Status Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {Object.entries(data.status_distribution).map(([status, count]) => {
-              const total = Math.max(1, data.metrics.total_shipments);
-              const width = Math.round((count / total) * 100);
-              return (
-                <div key={status} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm text-gray-700">
-                    <span>{STATUS_LABELS[status] ?? status}</span>
-                    <span>{count}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-gray-100">
-                    <div className={`h-2 rounded-full bg-gray-900 ${widthClass(width)}`} />
-                  </div>
-                </div>
-              );
-            })}
+          <CardContent>
+            <PieChart data={pieData} />
           </CardContent>
         </Card>
 
@@ -125,18 +122,14 @@ export default async function ReportsPage() {
           <CardHeader>
             <CardTitle>Monthly Throughput (Last 6 Months)</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {data.monthly_kpis.length === 0 ? (
-              <p className="text-sm text-gray-500">No monthly shipment trend available.</p>
-            ) : (
-              data.monthly_kpis.map((row) => (
-                <div key={row.month} className="rounded-md border border-gray-200 p-2 text-sm">
-                  <p className="font-medium text-gray-900">{row.month}</p>
-                  <p className="text-gray-700">Shipments: {row.shipments}</p>
-                  <p className="text-gray-700">Delivered: {row.delivered}</p>
-                </div>
-              ))
-            )}
+          <CardContent>
+            <LineChart
+              data={data.monthly_kpis.map((row) => ({
+                label: row.month,
+                value: row.shipments,
+              }))}
+              stroke="#2563EB"
+            />
           </CardContent>
         </Card>
       </div>
@@ -145,29 +138,36 @@ export default async function ReportsPage() {
         <CardHeader>
           <CardTitle>Carrier Performance</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Carrier</th>
-                <th className="px-3 py-2 text-left">Total</th>
-                <th className="px-3 py-2 text-left">Delivered</th>
-                <th className="px-3 py-2 text-left">Delayed</th>
-                <th className="px-3 py-2 text-left">On-time %</th>
-              </tr>
-            </thead>
-            <tbody>
+        <CardContent className="space-y-5">
+          <BarChart
+            title="On-time Delivery Rate by Carrier"
+            data={data.carrier_performance.slice(0, 8).map((row) => ({
+              label: row.carrier_name,
+              value: row.on_time_rate,
+            }))}
+          />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Carrier</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Delivered</TableHead>
+                <TableHead>Delayed</TableHead>
+                <TableHead>On-time %</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.carrier_performance.map((row) => (
-                <tr key={row.carrier_id} className="border-t">
-                  <td className="px-3 py-2 font-medium text-gray-900">{row.carrier_name}</td>
-                  <td className="px-3 py-2">{row.total_shipments}</td>
-                  <td className="px-3 py-2">{row.delivered_shipments}</td>
-                  <td className="px-3 py-2">{row.delayed_shipments}</td>
-                  <td className="px-3 py-2">{row.on_time_rate}%</td>
-                </tr>
+                <TableRow key={row.carrier_id}>
+                  <TableCell className="font-medium text-slate-900">{row.carrier_name}</TableCell>
+                  <TableCell>{row.total_shipments}</TableCell>
+                  <TableCell>{row.delivered_shipments}</TableCell>
+                  <TableCell>{row.delayed_shipments}</TableCell>
+                  <TableCell>{row.on_time_rate}%</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

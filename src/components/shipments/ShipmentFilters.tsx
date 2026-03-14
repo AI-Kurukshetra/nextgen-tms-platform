@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -16,6 +17,7 @@ export function ShipmentFilters({ initialSearch, initialStatus }: ShipmentFilter
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState(initialStatus);
@@ -41,8 +43,10 @@ export function ShipmentFilters({ initialSearch, initialStatus }: ShipmentFilter
     }
 
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  }, [baseParams, pathname, router]);
+    startTransition(() => {
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    });
+  }, [baseParams, pathname, router, startTransition]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -54,12 +58,16 @@ export function ShipmentFilters({ initialSearch, initialStatus }: ShipmentFilter
   }, [search, status, currentSearch, pushParams]);
 
   return (
-    <div className="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-[1fr_220px]">
-      <Input
-        value={search}
-        placeholder="Search by shipment #, origin, destination"
-        onChange={(event) => setSearch(event.target.value)}
-      />
+    <div className="grid gap-3 rounded-xl border border-cyan-100 bg-gradient-to-r from-white via-cyan-50/50 to-white p-4 shadow-sm md:grid-cols-[1fr_220px_auto]">
+      <div className="relative">
+        <Input
+          value={search}
+          placeholder="Search by shipment #, origin, destination"
+          onChange={(event) => setSearch(event.target.value)}
+          className="pr-9"
+        />
+        {isPending && <Loader2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-cyan-600" />}
+      </div>
 
       <Select
         value={status}
@@ -76,6 +84,17 @@ export function ShipmentFilters({ initialSearch, initialStatus }: ShipmentFilter
           </SelectItem>
         ))}
       </Select>
+
+      <div className="hidden items-center justify-end text-xs text-slate-500 md:flex">
+        {isPending ? (
+          <span className="inline-flex items-center gap-1.5 text-cyan-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Updating
+          </span>
+        ) : (
+          <span>Live filters enabled</span>
+        )}
+      </div>
     </div>
   );
 }

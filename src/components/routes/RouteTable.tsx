@@ -32,7 +32,7 @@ export function RouteTable({ routes }: RouteTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl bg-white/80">
       <Table>
         <TableHeader>
           <TableRow>

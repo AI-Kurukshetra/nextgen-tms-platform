@@ -1,6 +1,7 @@
 "use client";
 
-import { Package2 } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Package2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { DeleteShipmentDialog } from "@/components/shipments/DeleteShipmentDialog";
@@ -21,6 +22,7 @@ type ShipmentTableProps = {
 
 export function ShipmentTable({ shipments, canDelete }: ShipmentTableProps) {
   const router = useRouter();
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   if (shipments.length === 0) {
     return (
@@ -32,7 +34,7 @@ export function ShipmentTable({ shipments, canDelete }: ShipmentTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl bg-white/80">
       <Table>
         <TableHeader>
           <TableRow>
@@ -48,8 +50,20 @@ export function ShipmentTable({ shipments, canDelete }: ShipmentTableProps) {
         </TableHeader>
         <TableBody>
           {shipments.map((shipment) => (
-            <TableRow key={shipment.id} className="cursor-pointer" onClick={() => router.push(`/shipments/${shipment.id}`)}>
-              <TableCell className="font-medium">{shipment.shipment_number}</TableCell>
+            <TableRow
+              key={shipment.id}
+              className="cursor-pointer"
+              onClick={() => {
+                setOpeningId(shipment.id);
+                router.push(`/shipments/${shipment.id}`);
+              }}
+            >
+              <TableCell className="font-medium">
+                <span className="inline-flex items-center gap-2">
+                  {shipment.shipment_number}
+                  {openingId === shipment.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-600" />}
+                </span>
+              </TableCell>
               <TableCell>
                 {shipment.origin_city} to {shipment.destination_city}
               </TableCell>

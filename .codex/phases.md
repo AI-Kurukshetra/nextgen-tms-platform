@@ -109,6 +109,10 @@
 - [x] Auth flow redesigned with modern visual theme
 - [x] Dashboard upgraded with chart-style analytics and animated KPI cards
 - [x] Landing and shell UI refreshed with modern Tailwind styling and motion
+- [x] Global navigation progress indicator added for page clicks/submits
+- [x] Route-level loading screens added for root/auth/dashboard segments
+- [x] Reporting page upgraded with pie/line/bar analytics charts
+- [x] Shared table/card components refreshed with richer visual treatment + hover motion
 
 ---
 

@@ -160,6 +160,11 @@ Every async operation needs a visual state:
 // AI badge: spinner while fetching, badge when done
 ```
 
+### Navigation Feedback
+- Global top progress bar should appear on route navigation and GET filter submits.
+- Route-level `loading.tsx` is required for root/auth/dashboard segments.
+- Listing filters should show inline pending indicators while query params refresh.
+
 ---
 
 ## EMPTY STATES
