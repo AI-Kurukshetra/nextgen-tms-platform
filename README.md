@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NextGen TMS Platform
 
-## Getting Started
+AI-powered Transportation Management System for logistics operations.
 
-First, run the development server:
+## Overview
+
+NextGen TMS helps teams manage the full shipment lifecycle:
+
+Order -> Shipment -> Carrier/Driver Assignment -> Tracking -> Delivery -> Audit/Reporting
+
+Core capabilities include:
+
+- Role-based access (Admin, Dispatcher, Customer)
+- Shipment creation, filtering, and detail workflows
+- Carrier, driver, route, and warehouse operations
+- Customer portal for shipment visibility
+- Delay risk engine, reporting dashboard, and workflow extensions
+
+## Tech Stack
+
+- Next.js 16 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- Supabase (Auth + PostgreSQL)
+- Vercel deployment
+
+## Demo Access
+
+- Admin: `demo.admin@nextgentms.com` / `Admin@12345`
+- Dispatcher: `demo.dispatcher@nextgentms.com` / `Dispatch@12345`
+- Customer: `demo.customer@nextgentms.com` / `Customer@12345`
+
+## Screenshots
+
+### 1. Landing Page
+The public marketing page introduces the product value and key modules.
+
+![Landing Page](docs/screenshots/landing-page.png)
+
+### 2. Login Experience
+Role-aware login with quick-fill visitor demo accounts.
+
+![Login Page](docs/screenshots/login-page.png)
+
+### 3. Admin Dashboard
+Operations command center with KPI cards, shipment status distribution, trend chart, and recent shipments.
+
+![Admin Dashboard](docs/screenshots/admin-dashboard.png)
+
+### 4. Shipments Module
+Shipment workspace with live filters, status badges, and actionable listing rows.
+
+![Shipments Module](docs/screenshots/shipments-module.png)
+
+### 5. Customer Portal
+Customer-only view showing only the customer’s own shipments and milestones.
+
+![Customer Portal](docs/screenshots/customer-portal.png)
+
+### 6. Mobile Responsive View
+Mobile layout of shipments page with responsive header and filter controls.
+
+![Mobile Shipments](docs/screenshots/mobile-shipments.png)
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Live app: `https://nextgen-tms-platform.vercel.app`
