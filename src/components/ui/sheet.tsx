@@ -17,8 +17,27 @@ function useSheetContext() {
   return context;
 }
 
-function Sheet({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(false);
+type SheetProps = {
+  children: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+function Sheet({ children, open: openProp, onOpenChange }: SheetProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = openProp ?? internalOpen;
+
+  const setOpen = React.useCallback<React.Dispatch<React.SetStateAction<boolean>>>(
+    (value) => {
+      const nextValue = typeof value === "function" ? value(open) : value;
+      if (openProp === undefined) {
+        setInternalOpen(nextValue);
+      }
+      onOpenChange?.(nextValue);
+    },
+    [open, openProp, onOpenChange],
+  );
+
   return <SheetContext.Provider value={{ open, setOpen }}>{children}</SheetContext.Provider>;
 }
 

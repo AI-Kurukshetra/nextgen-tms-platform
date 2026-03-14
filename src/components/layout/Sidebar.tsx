@@ -58,7 +58,7 @@ export function Sidebar({ userName, userEmail, role }: SidebarProps) {
   const links = linksByRole(role);
 
   return (
-    <aside className="fixed left-0 top-0 flex h-screen w-64 flex-col border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col overflow-y-auto border-r border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-4">
       <div className="px-2 py-4">
         <h1 className="text-xl font-bold text-white">NextGen TMS</h1>
         <p className="text-xs text-slate-300">Logistics Command Center</p>
@@ -87,7 +87,7 @@ export function Sidebar({ userName, userEmail, role }: SidebarProps) {
         })}
       </nav>
 
-      <div className="space-y-3 border-t border-gray-800 pt-4">
+      <div className="mt-4 space-y-3 border-t border-gray-800 pt-4">
         <div className="flex items-center gap-3 px-2">
           <Avatar>
             <AvatarFallback>{(userName || userEmail || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
