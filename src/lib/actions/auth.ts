@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { APP_URL } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,10 +36,21 @@ export async function login(formData: unknown) {
 
   if (userRole !== role) {
     await supabase.auth.signOut();
+    const cookieStore = await cookies();
+    cookieStore.delete("tms_role");
     return { error: `This account is registered as ${userRole ?? "unknown"}, not ${role}` };
   }
 
-  redirect("/dashboard");
+  const cookieStore = await cookies();
+  cookieStore.set("tms_role", role, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  redirect(role === "customer" ? "/customer" : "/dashboard");
 }
 
 export async function register(formData: unknown) {
@@ -78,11 +90,22 @@ export async function register(formData: unknown) {
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  const cookieStore = await cookies();
+  cookieStore.set("tms_role", parsed.data.role, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  redirect(parsed.data.role === "customer" ? "/customer" : "/dashboard");
 }
 
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete("tms_role");
   redirect("/login");
 }

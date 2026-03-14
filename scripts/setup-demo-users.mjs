@@ -66,3 +66,39 @@ for (const user of users) {
 
   console.log(`created:${user.email}`);
 }
+
+const demoCustomerEmail = 'demo.customer@nextgentms.com';
+const refreshed = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+if (refreshed.error) throw new Error(refreshed.error.message);
+
+const demoCustomer = refreshed.data.users.find((u) => u.email?.toLowerCase() === demoCustomerEmail);
+if (!demoCustomer) throw new Error('Demo customer not found after setup');
+
+const { data: existingCustomerShipments, error: existingCustomerShipmentsError } = await supabase
+  .from('shipments')
+  .select('id')
+  .eq('customer_id', demoCustomer.id)
+  .limit(1);
+if (existingCustomerShipmentsError) throw new Error(existingCustomerShipmentsError.message);
+
+if ((existingCustomerShipments ?? []).length === 0) {
+  const { data: unassignedShipments, error: unassignedShipmentsError } = await supabase
+    .from('shipments')
+    .select('id')
+    .is('customer_id', null)
+    .order('created_at', { ascending: false })
+    .limit(3);
+  if (unassignedShipmentsError) throw new Error(unassignedShipmentsError.message);
+
+  if ((unassignedShipments ?? []).length > 0) {
+    const ids = unassignedShipments.map((shipment) => shipment.id);
+    const { error: assignError } = await supabase
+      .from('shipments')
+      .update({ customer_id: demoCustomer.id })
+      .in('id', ids);
+    if (assignError) throw new Error(assignError.message);
+    console.log(`assigned_shipments_to_demo_customer:${ids.length}`);
+  } else {
+    console.log('assigned_shipments_to_demo_customer:0');
+  }
+}

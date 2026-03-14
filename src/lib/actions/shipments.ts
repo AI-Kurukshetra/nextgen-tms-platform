@@ -53,7 +53,11 @@ async function getMyRole() {
 }
 
 export async function getShipments(status?: string, search?: string): Promise<ActionResult<ShipmentRow[]>> {
-  const supabase = await createClient();
+  const { supabase, user, role } = await getMyRole();
+
+  if (!user) {
+    return { data: null, error: "Unauthorized" };
+  }
 
   let query = supabase
     .from("shipments")
@@ -65,6 +69,10 @@ export async function getShipments(status?: string, search?: string): Promise<Ac
     `,
     )
     .order("created_at", { ascending: false });
+
+  if (role === "customer") {
+    query = query.eq("customer_id", user.id);
+  }
 
   if (status && status !== "all") {
     query = query.eq("status", status as ShipmentRow["status"]);
@@ -85,22 +93,28 @@ export async function getShipments(status?: string, search?: string): Promise<Ac
 }
 
 export async function getShipmentById(id: string): Promise<ActionResult<ShipmentRow & { tracking_events: Database["public"]["Tables"]["tracking_events"]["Row"][] }>> {
-  const supabase = await createClient();
+  const { supabase, user, role } = await getMyRole();
 
-  const { data, error } = await supabase
-    .from("shipments")
-    .select(
-      `
-      *,
-      carriers(*),
-      drivers(*),
-      routes(*),
-      origin_warehouse:warehouses!origin_warehouse_id(*),
-      dest_warehouse:warehouses!destination_warehouse_id(*)
-    `,
-    )
-    .eq("id", id)
-    .single();
+  if (!user) {
+    return { data: null, error: "Unauthorized" };
+  }
+
+  let query = supabase.from("shipments").select(
+    `
+    *,
+    carriers(*),
+    drivers(*),
+    routes(*),
+    origin_warehouse:warehouses!origin_warehouse_id(*),
+    dest_warehouse:warehouses!destination_warehouse_id(*)
+  `,
+  ).eq("id", id);
+
+  if (role === "customer") {
+    query = query.eq("customer_id", user.id);
+  }
+
+  const { data, error } = await query.single();
 
   if (error || !data) {
     return { data: null, error: error?.message ?? "Shipment not found" };

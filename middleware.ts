@@ -16,6 +16,10 @@ const PROTECTED_PATHS = [
   "/customer",
 ];
 
+function isPathOrDescendant(pathname: string, basePath: string) {
+  return pathname === basePath || pathname.startsWith(`${basePath}/`);
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -43,7 +47,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  const isProtected = PROTECTED_PATHS.some((path) => isPathOrDescendant(pathname, path));
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
 
   if (!user && isProtected) {
@@ -55,19 +59,24 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && isProtected) {
+    const cookieRole = request.cookies.get("tms_role")?.value ?? null;
+    const metadataRole =
+      typeof user.user_metadata?.role === "string" ? user.user_metadata.role : null;
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-    const role = profile?.role ?? null;
+    const role = profile?.role ?? metadataRole ?? cookieRole ?? null;
 
     if (role === "customer") {
       const customerAllowed =
-        pathname.startsWith("/customer") || pathname === "/shipments" || pathname.startsWith("/shipments/");
+        isPathOrDescendant(pathname, "/customer") ||
+        pathname === "/shipments" ||
+        isPathOrDescendant(pathname, "/shipments");
 
       if (!customerAllowed || pathname === "/shipments/new") {
         return NextResponse.redirect(new URL("/customer", request.url));
       }
     }
 
-    if (role && role !== "customer" && pathname.startsWith("/customer")) {
+    if (role && role !== "customer" && isPathOrDescendant(pathname, "/customer")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
